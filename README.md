@@ -379,184 +379,19 @@ Unlike general serialization formats, MCP-DSL understands protocol semantics:
 
 ---
 
-## Implementation
+## Implementations
 
-A working TypeScript implementation is included in this repository:
+Production-ready implementations are available in three languages, each optimized for different use cases:
 
-**[mcp-dsl-implementation.ts](mcp-dsl-implementation.ts)** - Parser and compiler with:
-- Lexer for tokenizing MCP-DSL syntax
-- Parser for building AST from tokens
-- Compiler for transforming AST to JSON-RPC 2.0
-- Full support for all message types, definitions, and annotations
+| Implementation | Performance | Best For |
+|----------------|-------------|----------|
+| **[TypeScript](implementations/typescript/)** | 566ms | Developer experience, Node.js/Bun integration |
+| **[Go](implementations/go/)** | 455ms (1.24x faster) | Balance of speed and productivity |
+| **[Nim](implementations/nim/)** | 297ms (1.91x faster) | Maximum performance, low memory footprint |
 
-### Example Usage
+All implementations provide complete MCP-DSL parsing with bidirectional transpilation (DSL ↔ JSON-RPC), comprehensive test suites (25 tests each), and verified round-trip fidelity.
 
-```typescript
-import { parseMCPDSL } from "./mcp-dsl-implementation";
-
-// Parse MCP-DSL and compile to JSON-RPC
-const result = parseMCPDSL(`> initialize#1 {
-  v: "2025-03-26"
-  caps: {tools, resources}
-  info: @impl("MyClient", "1.0.0")
-}`);
-
-console.log(result);
-// Output:
-// {
-//   "jsonrpc": "2.0",
-//   "id": 1,
-//   "method": "initialize",
-//   "params": {
-//     "protocolVersion": "2025-03-26",
-//     "capabilities": { "tools": {}, "resources": {} },
-//     "clientInfo": { "name": "MyClient", "version": "1.0.0" }
-//   }
-// }
-```
-
----
-
-## Testing
-
-Comprehensive test suite validates compliance with MCP specification:
-
-**[mcp-dsl-implementation.test.ts](mcp-dsl-implementation.test.ts)** - 15 tests covering:
-- All message types (requests, responses, notifications, errors)
-- Tool, Resource, and Prompt definitions
-- Type system and schema generation
-- MCP spec compliance (protocol version 2025-03-26)
-- Annotations and metadata
-- Token efficiency validation
-
-### Run Tests
-
-**With Bun:**
-```bash
-bun test
-```
-
-**With mise (recommended):**
-```bash
-# First time setup
-mise trust
-mise install
-
-# Run tests
-mise run test
-
-# Watch mode
-mise run test-watch
-```
-
-**Test Results:**
-```
-✅ 15 pass
-✅ 0 fail
-✅ 51 expect() calls
-✅ ~40ms execution time
-```
-
-All tests based on real examples from the [official MCP specification](https://github.com/modelcontextprotocol/specification).
-
----
-
-## Additional Implementations
-
-### Nim Implementation
-
-A high-performance Nim implementation is also available:
-
-**[mcp_dsl_implementation.nim](mcp_dsl_implementation.nim)** - Native compiled parser with:
-- Same lexer/parser/compiler architecture as TypeScript
-- Zero-cost abstractions with compile-time optimization
-- Full std/json integration for JSON-RPC output
-- Memory-safe with Nim's ORC memory management
-
-### Go Implementation
-
-A Go implementation offering excellent performance and developer experience:
-
-**[mcp_dsl_implementation.go](mcp_dsl_implementation.go)** - Native compiled parser with:
-- Same lexer/parser/compiler architecture
-- Static typing with excellent standard library
-- Fast compilation times
-- Comprehensive test coverage
-
-### Running Tests
-
-**With mise:**
-```bash
-# Run all test suites
-mise run test-all
-
-# Run individual implementations
-mise run test      # TypeScript
-mise run test-nim  # Nim
-```
-
-**Direct compilation:**
-```bash
-# TypeScript
-bun test
-
-# Nim
-nim c -r mcp_dsl_implementation_test.nim
-
-# Go
-go test -v
-```
-
-### Performance Comparison
-
-Benchmark results comparing TypeScript (Bun), Nim, and Go implementations across 7 test cases with 10,000 iterations each:
-
-| Test Case | TypeScript | Nim | Go | TS/Nim | TS/Go |
-|-----------|------------|-----|-----|--------|--------|
-| Simple ping | 39.68ms | 21.28ms | 13.00ms | **1.86x** | **3.05x** |
-| Initialize request | 59.51ms | 50.68ms | 26.00ms | **1.17x** | **2.29x** |
-| Tool definition | 153.57ms | 68.38ms | 82.00ms | **2.25x** | **1.87x** |
-| Tools call request | 68.48ms | 42.51ms | 66.00ms | **1.61x** | **1.04x** |
-| Error response | 26.25ms | 14.67ms | 25.00ms | **1.79x** | **1.05x** |
-| Resource definition | 108.84ms | 53.95ms | 65.00ms | **2.02x** | **1.67x** |
-| Complex conversation flow | 109.83ms | 45.06ms | 178.00ms | **2.44x** | **0.62x** |
-| **OVERALL** | **566.16ms** | **296.53ms** | **455.00ms** | **1.91x** | **1.24x** |
-
-**Key Findings:**
-- **Nim is the fastest** - 1.91x faster than TypeScript, 1.53x faster than Go
-- **Go offers excellent balance** - 1.24x faster than TypeScript with great tooling
-- **TypeScript** provides the best developer experience with good performance
-- All implementations maintain 100% correctness (all 15 tests pass)
-
-**Performance Rankings:**
-1. **Nim** - Best for maximum performance (296.5ms total)
-2. **Go** - Best balance of speed and productivity (455ms total)
-3. **TypeScript** - Best developer experience (566.2ms total)
-
-**Run the benchmarks:**
-```bash
-# TypeScript vs Nim
-mise run bench
-
-# All three (manual)
-nim c -d:release --opt:speed --mm:orc -o:benchmark_nim benchmark_nim.nim
-go build -o benchmark_go benchmark_go.go mcp_dsl_implementation.go
-./benchmark_nim 10000
-./benchmark_go 10000
-```
-
-**Implementation notes:**
-- TypeScript: Bun runtime with JIT compilation
-- Nim: Compiled to native code with `--opt:speed --mm:orc`
-- Go: Compiled with default optimizations
-- All use identical parser architecture (Lexer → Parser → Compiler)
-- Measurements include complete pipeline: lexing, parsing, and JSON compilation
-
-See **[PERFORMANCE.md](PERFORMANCE.md)** for detailed analysis and recommendations.
-
----
-
-All tests based on real examples from the [official MCP specification](https://github.com/modelcontextprotocol/specification).
+**See [implementations/README.md](implementations/README.md)** for detailed comparison, setup instructions, and performance benchmarks.
 
 ---
 
@@ -565,22 +400,9 @@ All tests based on real examples from the [official MCP specification](https://g
 ### ✅ Completed
 
 - **Parser + Compiler + Decompiler**: Three production-ready implementations with full round-trip support
-  - **TypeScript (Bun)**: ~1200 lines, excellent developer experience, hot reload, 25 tests (15 compiler + 10 round-trip)
-  - **Nim**: ~1100 lines, 1.91x faster than TS, native compilation, low memory footprint, 25 tests (15 compiler + 10 round-trip)
-  - **Go**: ~1400 lines, 1.24x faster than TS, fast compilation, great tooling, 25 tests (15 compiler + 10 round-trip)
 - **Test Coverage**: Comprehensive test suites validating MCP spec compliance and round-trip fidelity
-- **Performance Benchmarks**: Automated comparison framework comparing all three implementations
+- **Performance Benchmarks**: Automated comparison framework across all implementations
 - **Documentation**: Complete specification, usage examples, and detailed performance analysis
-
-### ✅ Recently Completed
-
-- **Decompiler** (JSON → DSL): Full bidirectional transpilation with round-trip support
-  - TypeScript implementation with 10 comprehensive round-trip tests
-  - Go implementation with 10 comprehensive round-trip tests
-  - Nim implementation with 10 comprehensive round-trip tests
-  - Semantic preservation verified across all message types
-  - Tool, Resource, and Prompt definitions fully supported
-  - All three implementations now feature complete round-trip capability
 
 ### 🚧 Future Work
 
@@ -588,26 +410,7 @@ All tests based on real examples from the [official MCP specification](https://g
 - **IDE Support**: Syntax highlighting, autocomplete, error checking for VSCode/IntelliJ
 - **Streaming Parser**: Handle large message streams efficiently
 - **CLI Tool**: Standalone converter for DSL ↔ JSON transformations
-- **Language Bindings**: Python, Rust, Go implementations
-
-### 📦 Getting Started
-
-```bash
-# Clone and setup
-git clone <repo-url>
-cd MCP-DSL
-mise trust && mise install
-
-# Run all tests
-mise run test-all
-
-# Run performance benchmark
-mise run bench
-
-# Try examples
-mise run verify        # TypeScript
-mise run verify-nim    # Nim
-```
+- **Additional Language Bindings**: Python, Rust implementations
 
 ---
 
