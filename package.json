@@ -1,0 +1,16 @@
+{
+  "name": "mcp-dsl",
+  "version": "0.1.0",
+  "description": "A token-efficient Domain Specific Language for Model Context Protocol",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

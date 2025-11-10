@@ -28,7 +28,7 @@ class MCPDSLLexer {
       const char = this.input[this.position];
       
       // Operators and symbols
-      if ('><!x#@?:=|&'.includes(char)) {
+      if ('><!x#@?:=|&-'.includes(char)) {
         tokens.push({
           type: 'operator',
           value: char,
@@ -49,8 +49,8 @@ class MCPDSLLexer {
       else if (/[a-zA-Z_]/.test(char)) {
         tokens.push(this.readIdentifier());
       }
-      // Braces, brackets, parens
-      else if ('{}[]()'.includes(char)) {
+      // Braces, brackets, parens, comma
+      else if ('{}[](),'.includes(char)) {
         tokens.push({
           type: 'symbol',
           value: char,
@@ -222,10 +222,19 @@ class MCPDSLParser {
     this.expect('x');
     this.expect('#');
     const id = this.expect('number').value;
-    const code = this.expect('number').value;
+
+    // Handle negative error codes (e.g., -32601)
+    let code: string;
+    if (this.peek()?.value === '-') {
+      this.advance(); // Skip the minus sign
+      code = '-' + this.expect('number').value;
+    } else {
+      code = this.expect('number').value;
+    }
+
     this.expect(':');
     const message = this.expect('string').value;
-    
+
     return {
       type: 'error',
       id: parseInt(id),
@@ -273,8 +282,16 @@ class MCPDSLParser {
   private parseBlock(): any {
     this.expect('{');
     const obj: any = {};
-    
+
     while (this.peek()?.value !== '}') {
+      if (!this.peek()) break; // Safety check
+
+      // Skip commas
+      if (this.peek()?.value === ',') {
+        this.advance();
+        continue;
+      }
+
       // Parse annotations
       if (this.peek()?.value === '@') {
         this.advance();
@@ -285,15 +302,24 @@ class MCPDSLParser {
         } else {
           obj[`@${annotationName}`] = true;
         }
+        // Skip optional comma after annotation
+        if (this.peek()?.value === ',') {
+          this.advance();
+        }
         continue;
       }
-      
+
       // Parse regular fields
       const key = this.expect('identifier').value;
       this.expect(':');
       obj[key] = this.parseValue();
+
+      // Skip optional comma after field
+      if (this.peek()?.value === ',') {
+        this.advance();
+      }
     }
-    
+
     this.expect('}');
     return obj;
   }
@@ -352,30 +378,19 @@ class MCPDSLParser {
   
   private parsePipeString(): string {
     this.expect('|');
-    
-    // Collect all remaining content at the appropriate indentation
-    // In a real implementation, this would track line indentation
-    // For demo purposes, we'll collect until we hit a dedent
-    
-    let content = '';
-    let baseIndent = -1;
-    let currentLine = '';
-    
-    // Skip to next line after pipe
-    while (this.position < this.tokens.length && 
-           this.tokens[this.position].type !== 'identifier' &&
-           this.tokens[this.position].value !== '}') {
-      const token = this.tokens[this.position];
-      
-      // Simple collection for demo - real impl would track indentation
-      if (token.type === 'string' || token.type === 'identifier') {
-        currentLine += token.value + ' ';
-      }
-      
-      this.advance();
+
+    // For this demo implementation, we'll collect string content after the pipe
+    // A full implementation would properly handle indentation-based multiline text
+
+    // Skip whitespace and look for the next token
+    // If it's a string, use that. Otherwise return a placeholder.
+    if (this.peek()?.type === 'string') {
+      const content = this.expect('string').value;
+      return content;
     }
-    
-    return currentLine.trim() || "multiline content here";
+
+    // For now, return placeholder for complex multiline cases
+    return "multiline content here";
   }
   
   private parseArray(): any {
@@ -830,20 +845,23 @@ const examples = [
   }`
 ];
 
-// Process each example
-examples.forEach((example, index) => {
-  console.log(`\n=== Example ${index + 1} ===`);
-  console.log('MCP-DSL Input:');
-  console.log(example);
-  
-  try {
-    const result = parseMCPDSL(example);
-    console.log('\nCompiled JSON:');
-    console.log(JSON.stringify(result, null, 2));
-  } catch (error) {
-    console.error('Parsing error:', error);
-  }
-});
-
 // Export for use in other modules
 export { MCPDSLLexer, MCPDSLParser, MCPDSLCompiler, parseMCPDSL };
+
+// Only run examples if this file is executed directly (not imported)
+if (import.meta.main) {
+  // Process each example
+  examples.forEach((example, index) => {
+    console.log(`\n=== Example ${index + 1} ===`);
+    console.log('MCP-DSL Input:');
+    console.log(example);
+
+    try {
+      const result = parseMCPDSL(example);
+      console.log('\nCompiled JSON:');
+      console.log(JSON.stringify(result, null, 2));
+    } catch (error) {
+      console.error('Parsing error:', error);
+    }
+  });
+}
