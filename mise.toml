@@ -1,14 +1,31 @@
 [tools]
 bun = "latest"
+nim = "latest"
 
 [tasks.test]
-description = "Run MCP-DSL test suite"
+description = "Run MCP-DSL test suite (TypeScript)"
 run = "bun test"
 
 [tasks.test-watch]
-description = "Run tests in watch mode"
+description = "Run tests in watch mode (TypeScript)"
 run = "bun test --watch"
 
 [tasks.verify]
-description = "Run implementation examples"
+description = "Run implementation examples (TypeScript)"
 run = "bun mcp-dsl-implementation.ts"
+
+[tasks.test-nim]
+description = "Run MCP-DSL test suite (Nim)"
+run = "nim c -r mcp_dsl_implementation_test.nim"
+
+[tasks.verify-nim]
+description = "Run implementation examples (Nim)"
+run = "nim c -r mcp_dsl_implementation.nim"
+
+[tasks.test-all]
+description = "Run all test suites (TypeScript and Nim)"
+run = "mise run test && mise run test-nim"
+
+[tasks.bench]
+description = "Run performance benchmark comparison"
+run = "bun benchmark.ts"

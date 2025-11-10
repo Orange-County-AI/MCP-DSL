@@ -1,0 +1,16 @@
+# Nim compiled artifacts
+mcp_dsl_implementation
+mcp_dsl_implementation_test
+benchmark_nim
+nimcache/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# TypeScript/Bun
+node_modules/
+*.log
+
+# Misc
+.DS_Store

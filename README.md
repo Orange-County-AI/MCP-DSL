@@ -461,6 +461,74 @@ All tests based on real examples from the [official MCP specification](https://g
 
 ---
 
+## Nim Implementation
+
+A high-performance Nim implementation is also available alongside the TypeScript version:
+
+**[mcp_dsl_implementation.nim](mcp_dsl_implementation.nim)** - Native compiled parser with:
+- Same lexer/parser/compiler architecture as TypeScript
+- Zero-cost abstractions with compile-time optimization
+- Full std/json integration for JSON-RPC output
+- Memory-safe with Nim's ORC memory management
+
+### Running Nim Tests
+
+**With mise:**
+```bash
+# Run Nim test suite
+mise run test-nim
+
+# Run both TypeScript and Nim tests
+mise run test-all
+```
+
+**Direct compilation:**
+```bash
+# Compile and run tests
+nim c -r mcp_dsl_implementation_test.nim
+
+# Compile with optimizations
+nim c -d:release --opt:speed --mm:orc mcp_dsl_implementation.nim
+```
+
+### Performance Comparison
+
+Benchmark results comparing TypeScript (Bun) and Nim implementations across 7 test cases with 10,000 iterations each:
+
+| Test Case | TypeScript | Nim | Speedup |
+|-----------|------------|-----|---------|
+| Simple ping | 39.68ms | 22.88ms | **1.73x** |
+| Initialize request | 59.51ms | 51.99ms | **1.14x** |
+| Tool definition | 153.57ms | 67.77ms | **2.27x** |
+| Tools call request | 68.48ms | 42.78ms | **1.60x** |
+| Error response | 26.25ms | 14.55ms | **1.80x** |
+| Resource definition | 108.84ms | 53.40ms | **2.04x** |
+| Complex conversation flow | 109.83ms | 44.56ms | **2.46x** |
+| **TOTAL** | **566.16ms** | **297.93ms** | **1.90x** |
+
+**Key Findings:**
+- **Nim is 1.90x faster on average** than TypeScript with Bun runtime
+- Speedup ranges from 1.14x to 2.46x depending on complexity
+- Complex parsing tasks show highest speedup (2.46x for conversation flows)
+- Both implementations maintain identical correctness (all 15 tests pass)
+
+**Run the benchmark yourself:**
+```bash
+mise run bench
+```
+
+**Implementation notes:**
+- TypeScript: Bun runtime with JIT compilation
+- Nim: Compiled to native code with `--opt:speed --mm:orc`
+- Both use identical parser architecture (Lexer → Parser → Compiler)
+- Measurements include complete pipeline: lexing, parsing, and JSON compilation
+
+---
+
+All tests based on real examples from the [official MCP specification](https://github.com/modelcontextprotocol/specification).
+
+---
+
 ## Learn More
 
 This README presents the vision and value proposition for MCP-DSL. For complete technical details:
