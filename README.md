@@ -379,6 +379,88 @@ Unlike general serialization formats, MCP-DSL understands protocol semantics:
 
 ---
 
+## Implementation
+
+A working TypeScript implementation is included in this repository:
+
+**[mcp-dsl-implementation.ts](mcp-dsl-implementation.ts)** - Parser and compiler with:
+- Lexer for tokenizing MCP-DSL syntax
+- Parser for building AST from tokens
+- Compiler for transforming AST to JSON-RPC 2.0
+- Full support for all message types, definitions, and annotations
+
+### Example Usage
+
+```typescript
+import { parseMCPDSL } from "./mcp-dsl-implementation";
+
+// Parse MCP-DSL and compile to JSON-RPC
+const result = parseMCPDSL(`> initialize#1 {
+  v: "2025-03-26"
+  caps: {tools, resources}
+  info: @impl("MyClient", "1.0.0")
+}`);
+
+console.log(result);
+// Output:
+// {
+//   "jsonrpc": "2.0",
+//   "id": 1,
+//   "method": "initialize",
+//   "params": {
+//     "protocolVersion": "2025-03-26",
+//     "capabilities": { "tools": {}, "resources": {} },
+//     "clientInfo": { "name": "MyClient", "version": "1.0.0" }
+//   }
+// }
+```
+
+---
+
+## Testing
+
+Comprehensive test suite validates compliance with MCP specification:
+
+**[mcp-dsl-implementation.test.ts](mcp-dsl-implementation.test.ts)** - 15 tests covering:
+- All message types (requests, responses, notifications, errors)
+- Tool, Resource, and Prompt definitions
+- Type system and schema generation
+- MCP spec compliance (protocol version 2025-03-26)
+- Annotations and metadata
+- Token efficiency validation
+
+### Run Tests
+
+**With Bun:**
+```bash
+bun test
+```
+
+**With mise (recommended):**
+```bash
+# First time setup
+mise trust
+mise install
+
+# Run tests
+mise run test
+
+# Watch mode
+mise run test-watch
+```
+
+**Test Results:**
+```
+✅ 15 pass
+✅ 0 fail
+✅ 51 expect() calls
+✅ ~40ms execution time
+```
+
+All tests based on real examples from the [official MCP specification](https://github.com/modelcontextprotocol/specification).
+
+---
+
 ## Learn More
 
 This README presents the vision and value proposition for MCP-DSL. For complete technical details:
@@ -408,7 +490,7 @@ MCP-DSL makes the protocol more accessible and cost-effective without compromisi
 
 ---
 
-**Status**: Research proposal and specification. Implementation phase beginning.
+**Status**: Working implementation with comprehensive test coverage. Ready for evaluation and feedback.
 
 **License**: MIT
 

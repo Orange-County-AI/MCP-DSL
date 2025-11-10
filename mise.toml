@@ -1,0 +1,14 @@
+[tools]
+bun = "latest"
+
+[tasks.test]
+description = "Run MCP-DSL test suite"
+run = "bun test"
+
+[tasks.test-watch]
+description = "Run tests in watch mode"
+run = "bun test --watch"
+
+[tasks.verify]
+description = "Run implementation examples"
+run = "bun mcp-dsl-implementation.ts"
