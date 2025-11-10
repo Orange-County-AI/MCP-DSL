@@ -381,17 +381,9 @@ Unlike general serialization formats, MCP-DSL understands protocol semantics:
 
 ## Implementations
 
-Production-ready implementations are available in three languages, each optimized for different use cases:
+A TypeScript implementation is provided, with additional implementations available in Go and Nim.
 
-| Implementation | Performance | Best For |
-|----------------|-------------|----------|
-| **[TypeScript](implementations/typescript/)** | 566ms | Developer experience, Node.js/Bun integration |
-| **[Go](implementations/go/)** | 455ms (1.24x faster) | Balance of speed and productivity |
-| **[Nim](implementations/nim/)** | 297ms (1.91x faster) | Maximum performance, low memory footprint |
-
-All implementations provide complete MCP-DSL parsing with bidirectional transpilation (DSL ↔ JSON-RPC), comprehensive test suites (25 tests each), and verified round-trip fidelity.
-
-**See [implementations/README.md](implementations/README.md)** for detailed comparison, setup instructions, and performance benchmarks.
+**See [implementations/README.md](implementations/README.md)** for details, setup instructions, and implementation requirements.
 
 ---
 

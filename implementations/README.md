@@ -44,8 +44,6 @@ Benchmark results across 7 test cases with 10,000 iterations each:
 | Complex conversation | 109.83ms | 45.06ms | 178.00ms | Nim |
 | **TOTAL** | **566.16ms** | **296.53ms** | **455.00ms** | **Nim** |
 
-See [../PERFORMANCE.md](../PERFORMANCE.md) for detailed analysis and recommendations.
-
 ## Choosing an Implementation
 
 **Choose TypeScript if:**
@@ -66,16 +64,16 @@ See [../PERFORMANCE.md](../PERFORMANCE.md) for detailed analysis and recommendat
 - You're building high-throughput systems
 - You want native code performance
 
-## Common Features
+## Implementation Requirements
 
-All implementations provide:
+All implementations must provide:
 
-✅ Complete MCP-DSL parser (Lexer → Parser → Compiler)
-✅ Bidirectional transpilation (DSL ↔ JSON-RPC)
-✅ Full MCP specification compliance
-✅ Comprehensive test suites (25 tests each)
-✅ Round-trip fidelity verification
-✅ Same parser architecture and semantics
+- Complete MCP-DSL parser (Lexer → Parser → Compiler)
+- Bidirectional transpilation (DSL ↔ JSON-RPC)
+- Full MCP specification compliance
+- Comprehensive test suites (25 tests each)
+- Round-trip fidelity verification
+- Same parser architecture and semantics
 
 ## Setup & Requirements
 
