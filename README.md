@@ -461,9 +461,11 @@ All tests based on real examples from the [official MCP specification](https://g
 
 ---
 
-## Nim Implementation
+## Additional Implementations
 
-A high-performance Nim implementation is also available alongside the TypeScript version:
+### Nim Implementation
+
+A high-performance Nim implementation is also available:
 
 **[mcp_dsl_implementation.nim](mcp_dsl_implementation.nim)** - Native compiled parser with:
 - Same lexer/parser/compiler architecture as TypeScript
@@ -471,57 +473,86 @@ A high-performance Nim implementation is also available alongside the TypeScript
 - Full std/json integration for JSON-RPC output
 - Memory-safe with Nim's ORC memory management
 
-### Running Nim Tests
+### Go Implementation
+
+A Go implementation offering excellent performance and developer experience:
+
+**[mcp_dsl_implementation.go](mcp_dsl_implementation.go)** - Native compiled parser with:
+- Same lexer/parser/compiler architecture
+- Static typing with excellent standard library
+- Fast compilation times
+- Comprehensive test coverage
+
+### Running Tests
 
 **With mise:**
 ```bash
-# Run Nim test suite
-mise run test-nim
-
-# Run both TypeScript and Nim tests
+# Run all test suites
 mise run test-all
+
+# Run individual implementations
+mise run test      # TypeScript
+mise run test-nim  # Nim
 ```
 
 **Direct compilation:**
 ```bash
-# Compile and run tests
+# TypeScript
+bun test
+
+# Nim
 nim c -r mcp_dsl_implementation_test.nim
 
-# Compile with optimizations
-nim c -d:release --opt:speed --mm:orc mcp_dsl_implementation.nim
+# Go
+go test -v
 ```
 
 ### Performance Comparison
 
-Benchmark results comparing TypeScript (Bun) and Nim implementations across 7 test cases with 10,000 iterations each:
+Benchmark results comparing TypeScript (Bun), Nim, and Go implementations across 7 test cases with 10,000 iterations each:
 
-| Test Case | TypeScript | Nim | Speedup |
-|-----------|------------|-----|---------|
-| Simple ping | 39.68ms | 22.88ms | **1.73x** |
-| Initialize request | 59.51ms | 51.99ms | **1.14x** |
-| Tool definition | 153.57ms | 67.77ms | **2.27x** |
-| Tools call request | 68.48ms | 42.78ms | **1.60x** |
-| Error response | 26.25ms | 14.55ms | **1.80x** |
-| Resource definition | 108.84ms | 53.40ms | **2.04x** |
-| Complex conversation flow | 109.83ms | 44.56ms | **2.46x** |
-| **TOTAL** | **566.16ms** | **297.93ms** | **1.90x** |
+| Test Case | TypeScript | Nim | Go | TS/Nim | TS/Go |
+|-----------|------------|-----|-----|--------|--------|
+| Simple ping | 39.68ms | 21.28ms | 13.00ms | **1.86x** | **3.05x** |
+| Initialize request | 59.51ms | 50.68ms | 26.00ms | **1.17x** | **2.29x** |
+| Tool definition | 153.57ms | 68.38ms | 82.00ms | **2.25x** | **1.87x** |
+| Tools call request | 68.48ms | 42.51ms | 66.00ms | **1.61x** | **1.04x** |
+| Error response | 26.25ms | 14.67ms | 25.00ms | **1.79x** | **1.05x** |
+| Resource definition | 108.84ms | 53.95ms | 65.00ms | **2.02x** | **1.67x** |
+| Complex conversation flow | 109.83ms | 45.06ms | 178.00ms | **2.44x** | **0.62x** |
+| **OVERALL** | **566.16ms** | **296.53ms** | **455.00ms** | **1.91x** | **1.24x** |
 
 **Key Findings:**
-- **Nim is 1.90x faster on average** than TypeScript with Bun runtime
-- Speedup ranges from 1.14x to 2.46x depending on complexity
-- Complex parsing tasks show highest speedup (2.46x for conversation flows)
-- Both implementations maintain identical correctness (all 15 tests pass)
+- **Nim is the fastest** - 1.91x faster than TypeScript, 1.53x faster than Go
+- **Go offers excellent balance** - 1.24x faster than TypeScript with great tooling
+- **TypeScript** provides the best developer experience with good performance
+- All implementations maintain 100% correctness (all 15 tests pass)
 
-**Run the benchmark yourself:**
+**Performance Rankings:**
+1. **Nim** - Best for maximum performance (296.5ms total)
+2. **Go** - Best balance of speed and productivity (455ms total)
+3. **TypeScript** - Best developer experience (566.2ms total)
+
+**Run the benchmarks:**
 ```bash
+# TypeScript vs Nim
 mise run bench
+
+# All three (manual)
+nim c -d:release --opt:speed --mm:orc -o:benchmark_nim benchmark_nim.nim
+go build -o benchmark_go benchmark_go.go mcp_dsl_implementation.go
+./benchmark_nim 10000
+./benchmark_go 10000
 ```
 
 **Implementation notes:**
 - TypeScript: Bun runtime with JIT compilation
 - Nim: Compiled to native code with `--opt:speed --mm:orc`
-- Both use identical parser architecture (Lexer → Parser → Compiler)
+- Go: Compiled with default optimizations
+- All use identical parser architecture (Lexer → Parser → Compiler)
 - Measurements include complete pipeline: lexing, parsing, and JSON compilation
+
+See **[PERFORMANCE.md](PERFORMANCE.md)** for detailed analysis and recommendations.
 
 ---
 
@@ -533,12 +564,13 @@ All tests based on real examples from the [official MCP specification](https://g
 
 ### ✅ Completed
 
-- **Parser + Compiler**: Two production-ready implementations
+- **Parser + Compiler**: Three production-ready implementations
   - **TypeScript (Bun)**: ~850 lines, excellent developer experience, hot reload
-  - **Nim**: ~700 lines, 1.90x faster, native compilation, low memory footprint
+  - **Nim**: ~700 lines, 1.91x faster than TS, native compilation, low memory footprint
+  - **Go**: ~900 lines, 1.24x faster than TS, fast compilation, great tooling
 - **Test Coverage**: 15 comprehensive tests per implementation validating MCP spec compliance
-- **Performance Benchmarks**: Automated comparison framework measuring real-world speedups
-- **Documentation**: Complete specification, usage examples, and performance analysis
+- **Performance Benchmarks**: Automated comparison framework comparing all three implementations
+- **Documentation**: Complete specification, usage examples, and detailed performance analysis
 
 ### 🚧 Future Work
 
