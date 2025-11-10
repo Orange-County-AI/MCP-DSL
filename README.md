@@ -564,17 +564,26 @@ All tests based on real examples from the [official MCP specification](https://g
 
 ### ✅ Completed
 
-- **Parser + Compiler**: Three production-ready implementations
-  - **TypeScript (Bun)**: ~850 lines, excellent developer experience, hot reload
-  - **Nim**: ~700 lines, 1.91x faster than TS, native compilation, low memory footprint
-  - **Go**: ~900 lines, 1.24x faster than TS, fast compilation, great tooling
-- **Test Coverage**: 15 comprehensive tests per implementation validating MCP spec compliance
+- **Parser + Compiler + Decompiler**: Three production-ready implementations with full round-trip support
+  - **TypeScript (Bun)**: ~1200 lines, excellent developer experience, hot reload, 25 tests (15 compiler + 10 round-trip)
+  - **Nim**: ~1100 lines, 1.91x faster than TS, native compilation, low memory footprint, 25 tests (15 compiler + 10 round-trip)
+  - **Go**: ~1400 lines, 1.24x faster than TS, fast compilation, great tooling, 25 tests (15 compiler + 10 round-trip)
+- **Test Coverage**: Comprehensive test suites validating MCP spec compliance and round-trip fidelity
 - **Performance Benchmarks**: Automated comparison framework comparing all three implementations
 - **Documentation**: Complete specification, usage examples, and detailed performance analysis
 
+### ✅ Recently Completed
+
+- **Decompiler** (JSON → DSL): Full bidirectional transpilation with round-trip support
+  - TypeScript implementation with 10 comprehensive round-trip tests
+  - Go implementation with 10 comprehensive round-trip tests
+  - Nim implementation with 10 comprehensive round-trip tests
+  - Semantic preservation verified across all message types
+  - Tool, Resource, and Prompt definitions fully supported
+  - All three implementations now feature complete round-trip capability
+
 ### 🚧 Future Work
 
-- **Decompiler** (JSON → DSL): Round-trip conversion for existing MCP messages
 - **Schema Validator**: Compile-time validation of DSL syntax and semantics
 - **IDE Support**: Syntax highlighting, autocomplete, error checking for VSCode/IntelliJ
 - **Streaming Parser**: Handle large message streams efficiently

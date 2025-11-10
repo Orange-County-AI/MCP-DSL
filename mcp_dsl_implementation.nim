@@ -559,6 +559,298 @@ proc parseMCPDSL*(input: string): JsonNode =
   let compiler = MCPDSLCompiler()
   compiler.compile(ast)
 
+# Forward declarations for decompiler
+proc decompileObject(obj: JsonNode, indent: int = 0): string
+proc decompileValue(value: JsonNode, indent: int = 0): string
+proc decompileParams(params: JsonNode): string
+proc decompileSchema(schema: JsonNode, indent: int = 0): string
+proc decompileType(typeDef: JsonNode, required: bool = false): string
+proc decompileCapabilities(caps: JsonNode): JsonNode
+proc decompileTool(data: JsonNode): string
+proc decompileResource(data: JsonNode): string
+proc decompilePrompt(data: JsonNode): string
+
+# Decompiler - converts JSON back to DSL
+proc decompileMCPJSON*(data: JsonNode): string =
+  if data.isNil or data.kind == JNull:
+    return ""
+
+  # Detect message type based on JSON-RPC structure
+  if data.kind == JObject:
+    if data.hasKey("jsonrpc") and data["jsonrpc"].getStr == "2.0":
+      # Error response
+      if data.hasKey("error"):
+        let id = data["id"].getInt
+        let code = data["error"]["code"].getInt
+        let message = data["error"]["message"].getStr
+        return "x #" & $id & " " & $code & ":\"" & message & "\""
+
+      # Response with result
+      elif data.hasKey("result") and data.hasKey("id"):
+        let id = data["id"].getInt
+        var output = "< #" & $id
+        let resultNode = data["result"]
+        if resultNode.kind == JObject and resultNode.len > 0:
+          output &= " " & decompileObject(resultNode)
+        return output
+
+      # Request with id
+      elif data.hasKey("method") and data.hasKey("id"):
+        let meth = data["method"].getStr
+        let id = data["id"].getInt
+        var output = "> " & meth & "#" & $id
+        if data.hasKey("params"):
+          let params = data["params"]
+          if params.kind == JObject and params.len > 0:
+            output &= " " & decompileParams(params)
+        return output
+
+      # Notification (no id)
+      elif data.hasKey("method"):
+        let meth = data["method"].getStr
+        var output = "! " & meth
+        if data.hasKey("params"):
+          let params = data["params"]
+          if params.kind == JObject and params.len > 0:
+            output &= " " & decompileParams(params)
+        return output
+
+    # Tool definition
+    if data.hasKey("name") and data.hasKey("inputSchema"):
+      return decompileTool(data)
+
+    # Resource definition
+    if data.hasKey("name") and data.hasKey("uri"):
+      return decompileResource(data)
+
+    # Prompt definition
+    if data.hasKey("name") and data.hasKey("messages"):
+      return decompilePrompt(data)
+
+  return ""
+
+proc decompileTool(data: JsonNode): string =
+  let name = data["name"].getStr
+  result = "T " & name & " {\n"
+
+  if data.hasKey("description"):
+    result &= "  desc: \"" & data["description"].getStr & "\"\n"
+
+  if data.hasKey("inputSchema"):
+    result &= "  in: " & decompileSchema(data["inputSchema"], 2) & "\n"
+
+  if data.hasKey("outputSchema"):
+    result &= "  out: " & decompileSchema(data["outputSchema"], 2) & "\n"
+
+  # Handle annotations
+  if data.hasKey("annotations"):
+    let annotations = data["annotations"]
+    if annotations.hasKey("readOnlyHint") and annotations["readOnlyHint"].getBool:
+      result &= "  @readonly\n"
+    if annotations.hasKey("idempotentHint") and annotations["idempotentHint"].getBool:
+      result &= "  @idempotent\n"
+    if annotations.hasKey("destructiveHint") and not annotations["destructiveHint"].getBool:
+      result &= "  @destructive: false\n"
+    if annotations.hasKey("openWorldHint") and not annotations["openWorldHint"].getBool:
+      result &= "  @openWorld: false\n"
+
+  result &= "}"
+
+proc decompileResource(data: JsonNode): string =
+  let name = data["name"].getStr
+  result = "R " & name & " {\n"
+
+  if data.hasKey("uri"):
+    result &= "  uri: \"" & data["uri"].getStr & "\"\n"
+
+  if data.hasKey("description"):
+    result &= "  desc: \"" & data["description"].getStr & "\"\n"
+
+  if data.hasKey("mimeType"):
+    result &= "  mime: \"" & data["mimeType"].getStr & "\"\n"
+
+  if data.hasKey("size"):
+    result &= "  size: " & $data["size"].getInt & "\n"
+
+  if data.hasKey("annotations"):
+    for key, value in data["annotations"].pairs:
+      if value.kind == JBool and value.getBool:
+        result &= "  @" & key & "\n"
+      else:
+        result &= "  @" & key & ": " & $value & "\n"
+
+  result &= "}"
+
+proc decompilePrompt(data: JsonNode): string =
+  let name = data["name"].getStr
+  result = "P " & name & " {\n"
+
+  if data.hasKey("description"):
+    result &= "  desc: \"" & data["description"].getStr & "\"\n"
+
+  if data.hasKey("arguments"):
+    let args = data["arguments"]
+    if args.kind == JArray and args.len > 0:
+      result &= "  args: {\n"
+      for arg in args:
+        let argName = arg["name"].getStr
+        let required = if arg.hasKey("required") and arg["required"].getBool: "!" else: ""
+        result &= "    " & argName & ": str" & required & "\n"
+      result &= "  }\n"
+
+  if data.hasKey("messages"):
+    let messages = data["messages"]
+    if messages.kind == JArray and messages.len > 0:
+      result &= "  msgs: [\n"
+      for msg in messages:
+        let role = if msg["role"].getStr == "user": "u" else: "a"
+        var content = ""
+        if msg["content"].kind == JString:
+          content = msg["content"].getStr
+        elif msg["content"].kind == JObject and msg["content"].hasKey("text"):
+          content = msg["content"]["text"].getStr
+        result &= "    " & role & ": \"" & content & "\"\n"
+      result &= "  ]\n"
+
+  result &= "}"
+
+proc decompileParams(params: JsonNode): string =
+  var obj = newJObject()
+
+  # Reverse special field mappings
+  if params.hasKey("protocolVersion"):
+    obj["v"] = params["protocolVersion"]
+
+  if params.hasKey("capabilities"):
+    obj["caps"] = decompileCapabilities(params["capabilities"])
+
+  if params.hasKey("clientInfo"):
+    obj["info"] = params["clientInfo"]
+
+  if params.hasKey("serverInfo"):
+    obj["info"] = params["serverInfo"]
+
+  if params.hasKey("arguments"):
+    obj["args"] = params["arguments"]
+
+  # Copy other params
+  for key, value in params.pairs:
+    if key notin ["protocolVersion", "capabilities", "clientInfo", "serverInfo", "arguments"]:
+      obj[key] = value
+
+  result = decompileObject(obj)
+
+proc decompileObject(obj: JsonNode, indent: int = 0): string =
+  if obj.isNil or obj.kind == JNull:
+    return "null"
+
+  if obj.kind == JArray:
+    if obj.len == 0:
+      return "[]"
+    var items: seq[string]
+    for item in obj:
+      items.add(decompileValue(item, indent))
+    return "[" & items.join(", ") & "]"
+
+  if obj.kind == JObject:
+    if obj.len == 0:
+      return "{}"
+
+    let indentStr = " ".repeat(indent)
+    let innerIndentStr = " ".repeat(indent + 2)
+
+    result = "{\n"
+    var first = true
+    for key, value in obj.pairs:
+      if not first:
+        result &= ",\n"
+      first = false
+      result &= innerIndentStr & key & ": " & decompileValue(value, indent + 2)
+    result &= "\n" & indentStr & "}"
+  else:
+    result = $obj
+
+proc decompileValue(value: JsonNode, indent: int = 0): string =
+  if value.isNil or value.kind == JNull:
+    return "null"
+
+  case value.kind
+  of JString:
+    return "\"" & value.getStr & "\""
+  of JInt:
+    return $value.getInt
+  of JFloat:
+    return $value.getFloat
+  of JBool:
+    return $value.getBool
+  of JArray:
+    if value.len == 0:
+      return "[]"
+    var items: seq[string]
+    for item in value:
+      items.add(decompileValue(item, indent))
+    return "[" & items.join(", ") & "]"
+  of JObject:
+    return decompileObject(value, indent)
+  else:
+    return $value
+
+proc decompileSchema(schema: JsonNode, indent: int = 0): string =
+  if not schema.hasKey("properties"):
+    return "{}"
+
+  let properties = schema["properties"]
+  if properties.len == 0:
+    return "{}"
+
+  let indentStr = " ".repeat(indent)
+  let innerIndentStr = " ".repeat(indent + 2)
+
+  result = "{\n"
+
+  var required: seq[string]
+  if schema.hasKey("required"):
+    for item in schema["required"]:
+      required.add(item.getStr)
+
+  var first = true
+  for key, value in properties.pairs:
+    if not first:
+      result &= ",\n"
+    first = false
+
+    let isRequired = key in required
+    result &= innerIndentStr & key & ": " & decompileType(value, isRequired)
+
+  result &= "\n" & indentStr & "}"
+
+proc decompileType(typeDef: JsonNode, required: bool = false): string =
+  let typeMap = {
+    "string": "str",
+    "integer": "int",
+    "number": "num",
+    "boolean": "bool"
+  }.toTable
+
+  let typeStr = if typeDef.hasKey("type"): typeDef["type"].getStr else: "str"
+  let dslType = typeMap.getOrDefault(typeStr, typeStr)
+  let requiredMarker = if required: "!" else: ""
+
+  return dslType & requiredMarker
+
+proc decompileCapabilities(caps: JsonNode): JsonNode =
+  var capabilities = newJArray()
+
+  for key, value in caps.pairs:
+    if value.kind == JObject and value.len > 0:
+      for subKey in value.keys:
+        capabilities.add(newJString(key & "." & subKey))
+    else:
+      capabilities.add(newJString(key))
+
+  result = newJObject()
+  result["includes"] = capabilities
+
 # Only run examples when executed directly
 when isMainModule:
   let examples = [

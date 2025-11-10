@@ -451,3 +451,280 @@ func BenchmarkParseMCPDSL(b *testing.B) {
 func mapsEqual(a, b map[string]interface{}) bool {
 	return reflect.DeepEqual(a, b)
 }
+
+// Round-Trip Tests
+
+func TestRoundTripSimplePing(t *testing.T) {
+	originalDSL := "> ping#2"
+
+	// DSL → JSON
+	json := ParseMCPDSL(originalDSL)
+
+	// JSON → DSL
+	reconstructedDSL := DecompileMCPJSON(json)
+
+	// Verify
+	if reconstructedDSL != originalDSL {
+		t.Errorf("Round-trip failed:\nOriginal: %s\nReconstructed: %s", originalDSL, reconstructedDSL)
+	}
+}
+
+func TestRoundTripInitializeRequest(t *testing.T) {
+	originalDSL := `> initialize#1 {
+  v: "2025-03-26"
+}`
+
+	// DSL → JSON
+	json := ParseMCPDSL(originalDSL)
+
+	// JSON → DSL
+	reconstructedDSL := DecompileMCPJSON(json)
+
+	// Parse reconstructed DSL back to JSON for semantic comparison
+	roundTripJSON := ParseMCPDSL(reconstructedDSL)
+
+	// Verify semantic equivalence
+	origMap := json.(map[string]interface{})
+	roundMap := roundTripJSON.(map[string]interface{})
+
+	origParams := origMap["params"].(map[string]interface{})
+	roundParams := roundMap["params"].(map[string]interface{})
+
+	if origParams["protocolVersion"] != roundParams["protocolVersion"] {
+		t.Errorf("Protocol version mismatch: %v != %v",
+			origParams["protocolVersion"], roundParams["protocolVersion"])
+	}
+}
+
+func TestRoundTripNotification(t *testing.T) {
+	originalDSL := "! initialized"
+
+	// DSL → JSON
+	json := ParseMCPDSL(originalDSL)
+
+	// JSON → DSL
+	reconstructedDSL := DecompileMCPJSON(json)
+
+	// Verify
+	if reconstructedDSL != originalDSL {
+		t.Errorf("Round-trip failed:\nOriginal: %s\nReconstructed: %s", originalDSL, reconstructedDSL)
+	}
+}
+
+func TestRoundTripErrorResponse(t *testing.T) {
+	originalDSL := `x #10 -32601:"Method not found"`
+
+	// DSL → JSON
+	json := ParseMCPDSL(originalDSL)
+
+	// JSON → DSL
+	reconstructedDSL := DecompileMCPJSON(json)
+
+	// Verify
+	if reconstructedDSL != originalDSL {
+		t.Errorf("Round-trip failed:\nOriginal: %s\nReconstructed: %s", originalDSL, reconstructedDSL)
+	}
+}
+
+func TestRoundTripResponse(t *testing.T) {
+	originalJSON := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      float64(100),
+		"result": map[string]interface{}{
+			"status": "ok",
+		},
+	}
+
+	// JSON → DSL
+	dsl := DecompileMCPJSON(originalJSON)
+
+	// DSL → JSON
+	reconstructedJSON := ParseMCPDSL(dsl)
+	m, ok := reconstructedJSON.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected map, got %T", reconstructedJSON)
+	}
+
+	// Verify semantic equivalence
+	// Compare as int since ParseMCPDSL may return int instead of float64
+	idVal := m["id"]
+	var id int
+	switch v := idVal.(type) {
+	case int:
+		id = v
+	case float64:
+		id = int(v)
+	default:
+		t.Fatalf("Unexpected ID type: %T", idVal)
+	}
+
+	if id != 100 {
+		t.Errorf("ID mismatch: expected 100, got %v", id)
+	}
+
+	result, ok := m["result"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected result to be map, got %T", m["result"])
+	}
+	if result["status"] != "ok" {
+		t.Errorf("Status mismatch: expected ok, got %v", result["status"])
+	}
+}
+
+func TestRoundTripToolDefinition(t *testing.T) {
+	originalJSON := map[string]interface{}{
+		"name":        "search",
+		"description": "Search tool",
+		"inputSchema": map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{
+					"type": "string",
+				},
+			},
+			"required": []interface{}{"query"},
+		},
+	}
+
+	// JSON → DSL
+	dsl := DecompileMCPJSON(originalJSON)
+
+	// Verify DSL contains key elements
+	if !contains(dsl, "T search") {
+		t.Error("DSL should contain 'T search'")
+	}
+	if !contains(dsl, "desc:") {
+		t.Error("DSL should contain 'desc:'")
+	}
+	if !contains(dsl, "query: str!") {
+		t.Error("DSL should contain 'query: str!'")
+	}
+}
+
+func TestRoundTripResourceDefinition(t *testing.T) {
+	originalJSON := map[string]interface{}{
+		"name":        "main_file",
+		"uri":         "file:///project/src/main.rs",
+		"mimeType":    "text/x-rust",
+		"description": "Primary application entry point",
+		"annotations": map[string]interface{}{
+			"priority": 1.0,
+		},
+	}
+
+	// JSON → DSL
+	dsl := DecompileMCPJSON(originalJSON)
+
+	// Verify DSL contains key elements
+	if !contains(dsl, "R main_file") {
+		t.Error("DSL should contain 'R main_file'")
+	}
+	if !contains(dsl, "uri:") {
+		t.Error("DSL should contain 'uri:'")
+	}
+	if !contains(dsl, "@priority:") {
+		t.Error("DSL should contain '@priority:'")
+	}
+}
+
+func TestRoundTripToolsCallRequest(t *testing.T) {
+	originalDSL := `> tools/call#4 {
+  name: "get_weather",
+  args: {
+    location: "New York"
+  }
+}`
+
+	// DSL → JSON
+	json := ParseMCPDSL(originalDSL)
+
+	// JSON → DSL
+	reconstructedDSL := DecompileMCPJSON(json)
+
+	// DSL → JSON again
+	roundTripJSON := ParseMCPDSL(reconstructedDSL)
+
+	// Verify semantic equivalence
+	origMap := json.(map[string]interface{})
+	roundMap := roundTripJSON.(map[string]interface{})
+
+	if origMap["method"] != roundMap["method"] {
+		t.Errorf("Method mismatch: %v != %v", origMap["method"], roundMap["method"])
+	}
+
+	if origMap["id"] != roundMap["id"] {
+		t.Errorf("ID mismatch: %v != %v", origMap["id"], roundMap["id"])
+	}
+}
+
+func TestRoundTripComplexTool(t *testing.T) {
+	originalJSON := map[string]interface{}{
+		"name":        "analyze",
+		"description": "Analyze data",
+		"inputSchema": map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"text":   map[string]interface{}{"type": "string"},
+				"count":  map[string]interface{}{"type": "integer"},
+				"amount": map[string]interface{}{"type": "number"},
+				"active": map[string]interface{}{"type": "boolean"},
+			},
+			"required": []interface{}{"text", "count"},
+		},
+		"annotations": map[string]interface{}{
+			"readOnlyHint": true,
+		},
+	}
+
+	// JSON → DSL
+	dsl := DecompileMCPJSON(originalJSON)
+
+	// Verify DSL contains required markers
+	if !contains(dsl, "text: str") {
+		t.Error("DSL should contain 'text: str'")
+	}
+	if !contains(dsl, "count: int") {
+		t.Error("DSL should contain 'count: int'")
+	}
+	if !contains(dsl, "@readonly") {
+		t.Error("DSL should contain '@readonly'")
+	}
+}
+
+func TestSemanticEquivalenceRoundTrip(t *testing.T) {
+	testCases := []string{
+		"> ping#1",
+		"! initialized",
+		`x #5 -32600:"Invalid Request"`,
+	}
+
+	for _, originalDSL := range testCases {
+		// DSL → JSON → DSL → JSON
+		json1 := ParseMCPDSL(originalDSL)
+		dsl := DecompileMCPJSON(json1)
+		json2 := ParseMCPDSL(dsl)
+
+		// Both JSON representations should be semantically equivalent
+		json1Bytes, _ := json.Marshal(json1)
+		json2Bytes, _ := json.Marshal(json2)
+
+		if string(json1Bytes) != string(json2Bytes) {
+			t.Errorf("Semantic equivalence failed for: %s\nJSON1: %s\nJSON2: %s",
+				originalDSL, string(json1Bytes), string(json2Bytes))
+		}
+	}
+}
+
+// Helper function for string contains check
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsAt(s, substr))
+}
+
+func containsAt(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

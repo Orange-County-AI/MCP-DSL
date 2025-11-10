@@ -756,19 +756,19 @@ class MCPDSLCompiler {
     if (typeof content === 'string') {
       return { type: 'text', text: content };
     }
-    
+
     if (content.txt) {
       return { type: 'text', text: content.txt };
     }
-    
+
     if (content.img) {
-      return { 
-        type: 'image', 
+      return {
+        type: 'image',
         data: content.img,
         mimeType: content.mime || 'image/png'
       };
     }
-    
+
     if (content.aud) {
       return {
         type: 'audio',
@@ -776,22 +776,364 @@ class MCPDSLCompiler {
         mimeType: content.mime || 'audio/mp3'
       };
     }
-    
+
     if (content.res) {
       return {
         type: 'resource_link',
         ...content.res
       };
     }
-    
+
     if (content.emb) {
       return {
         type: 'resource',
         resource: content.emb
       };
     }
-    
+
     return content;
+  }
+}
+
+class MCPDSLDecompiler {
+  decompile(json: any): string {
+    if (!json) return '';
+
+    // Detect message type based on JSON-RPC structure
+    if (json.jsonrpc === "2.0") {
+      // Error response
+      if (json.error) {
+        return this.decompileError(json);
+      }
+      // Response with result
+      else if ('result' in json && 'id' in json) {
+        return this.decompileResponse(json);
+      }
+      // Request with id
+      else if (json.method && 'id' in json) {
+        return this.decompileRequest(json);
+      }
+      // Notification (no id)
+      else if (json.method) {
+        return this.decompileNotification(json);
+      }
+    }
+
+    // Tool definition
+    if (json.name && json.inputSchema) {
+      return this.decompileTool(json);
+    }
+
+    // Resource definition
+    if (json.name && json.uri) {
+      return this.decompileResource(json);
+    }
+
+    // Prompt definition
+    if (json.name && json.messages) {
+      return this.decompilePrompt(json);
+    }
+
+    return '';
+  }
+
+  private decompileRequest(json: any): string {
+    const method = json.method;
+    const id = json.id;
+    const params = json.params || {};
+
+    let result = `> ${method}#${id}`;
+
+    if (Object.keys(params).length > 0) {
+      result += ' ' + this.decompileParams(params);
+    }
+
+    return result;
+  }
+
+  private decompileResponse(json: any): string {
+    const id = json.id;
+    const result = json.result || {};
+
+    let output = `< #${id}`;
+
+    if (Object.keys(result).length > 0) {
+      output += ' ' + this.decompileObject(result);
+    }
+
+    return output;
+  }
+
+  private decompileNotification(json: any): string {
+    const method = json.method;
+    const params = json.params || {};
+
+    let result = `! ${method}`;
+
+    if (Object.keys(params).length > 0) {
+      result += ' ' + this.decompileParams(params);
+    }
+
+    return result;
+  }
+
+  private decompileError(json: any): string {
+    const id = json.id;
+    const code = json.error.code;
+    const message = json.error.message;
+
+    return `x #${id} ${code}:"${message}"`;
+  }
+
+  private decompileTool(json: any): string {
+    const name = json.name;
+    let result = `T ${name} {\n`;
+
+    if (json.description) {
+      result += `  desc: "${json.description}"\n`;
+    }
+
+    if (json.inputSchema) {
+      result += `  in: ${this.decompileSchema(json.inputSchema, 2)}\n`;
+    }
+
+    if (json.outputSchema) {
+      result += `  out: ${this.decompileSchema(json.outputSchema, 2)}\n`;
+    }
+
+    // Handle annotations
+    if (json.annotations) {
+      if (json.annotations.readOnlyHint) {
+        result += `  @readonly\n`;
+      }
+      if (json.annotations.idempotentHint) {
+        result += `  @idempotent\n`;
+      }
+      if (json.annotations.destructiveHint === false) {
+        result += `  @destructive: false\n`;
+      }
+      if (json.annotations.openWorldHint === false) {
+        result += `  @openWorld: false\n`;
+      }
+    }
+
+    result += '}';
+    return result;
+  }
+
+  private decompileResource(json: any): string {
+    const name = json.name;
+    let result = `R ${name} {\n`;
+
+    if (json.uri) {
+      result += `  uri: "${json.uri}"\n`;
+    }
+
+    if (json.description) {
+      result += `  desc: "${json.description}"\n`;
+    }
+
+    if (json.mimeType) {
+      result += `  mime: "${json.mimeType}"\n`;
+    }
+
+    if (json.size !== undefined) {
+      result += `  size: ${json.size}\n`;
+    }
+
+    if (json.annotations) {
+      for (const [key, value] of Object.entries(json.annotations)) {
+        if (typeof value === 'boolean' && value === true) {
+          result += `  @${key}\n`;
+        } else {
+          result += `  @${key}: ${JSON.stringify(value)}\n`;
+        }
+      }
+    }
+
+    result += '}';
+    return result;
+  }
+
+  private decompilePrompt(json: any): string {
+    const name = json.name;
+    let result = `P ${name} {\n`;
+
+    if (json.description) {
+      result += `  desc: "${json.description}"\n`;
+    }
+
+    if (json.arguments && json.arguments.length > 0) {
+      result += `  args: {\n`;
+      for (const arg of json.arguments) {
+        const required = arg.required ? '!' : '';
+        result += `    ${arg.name}: str${required}\n`;
+      }
+      result += `  }\n`;
+    }
+
+    if (json.messages && json.messages.length > 0) {
+      result += `  msgs: [\n`;
+      for (const msg of json.messages) {
+        const role = msg.role === 'user' ? 'u' : 'a';
+        const content = typeof msg.content === 'string' ? msg.content :
+                       msg.content.text || JSON.stringify(msg.content);
+        result += `    ${role}: "${content}"\n`;
+      }
+      result += `  ]\n`;
+    }
+
+    result += '}';
+    return result;
+  }
+
+  private decompileParams(params: any): string {
+    const obj: any = {};
+
+    // Reverse special field mappings
+    if (params.protocolVersion) {
+      obj.v = params.protocolVersion;
+    }
+
+    if (params.capabilities) {
+      obj.caps = this.decompileCapabilities(params.capabilities);
+    }
+
+    if (params.clientInfo) {
+      obj.info = params.clientInfo;
+    }
+
+    if (params.serverInfo) {
+      obj.info = params.serverInfo;
+    }
+
+    if (params.arguments) {
+      obj.args = params.arguments;
+    }
+
+    // Copy other params
+    for (const [key, value] of Object.entries(params)) {
+      if (!['protocolVersion', 'capabilities', 'clientInfo', 'serverInfo', 'arguments'].includes(key)) {
+        obj[key] = value;
+      }
+    }
+
+    return this.decompileObject(obj);
+  }
+
+  private decompileObject(obj: any, indent: number = 0): string {
+    if (typeof obj !== 'object' || obj === null) {
+      return JSON.stringify(obj);
+    }
+
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return '[]';
+      const items = obj.map(item => this.decompileValue(item, indent + 2));
+      return `[${items.join(', ')}]`;
+    }
+
+    const entries = Object.entries(obj);
+    if (entries.length === 0) return '{}';
+
+    const indentStr = ' '.repeat(indent);
+    const innerIndentStr = ' '.repeat(indent + 2);
+
+    let result = '{\n';
+    for (let i = 0; i < entries.length; i++) {
+      const [key, value] = entries[i];
+      result += innerIndentStr + key + ': ' + this.decompileValue(value, indent + 2);
+      if (i < entries.length - 1) {
+        result += ',';
+      }
+      result += '\n';
+    }
+    result += indentStr + '}';
+
+    return result;
+  }
+
+  private decompileValue(value: any, indent: number = 0): string {
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+
+    if (typeof value === 'string') {
+      return `"${value}"`;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) return '[]';
+      const items = value.map(item => this.decompileValue(item, indent));
+      return `[${items.join(', ')}]`;
+    }
+
+    if (typeof value === 'object') {
+      return this.decompileObject(value, indent);
+    }
+
+    return String(value);
+  }
+
+  private decompileSchema(schema: any, indent: number = 0): string {
+    if (!schema || !schema.properties) {
+      return '{}';
+    }
+
+    const indentStr = ' '.repeat(indent);
+    const innerIndentStr = ' '.repeat(indent + 2);
+
+    let result = '{\n';
+    const entries = Object.entries(schema.properties);
+
+    for (let i = 0; i < entries.length; i++) {
+      const [key, value] = entries[i];
+      const typeDef = value as any;
+      const isRequired = schema.required && schema.required.includes(key);
+
+      result += innerIndentStr + key + ': ' + this.decompileType(typeDef, isRequired);
+      if (i < entries.length - 1) {
+        result += ',';
+      }
+      result += '\n';
+    }
+
+    result += indentStr + '}';
+    return result;
+  }
+
+  private decompileType(type: any, required: boolean = false): string {
+    const typeMap: any = {
+      'string': 'str',
+      'integer': 'int',
+      'number': 'num',
+      'boolean': 'bool'
+    };
+
+    const dslType = typeMap[type.type] || type.type;
+    const requiredMarker = required ? '!' : '';
+
+    return dslType + requiredMarker;
+  }
+
+  private decompileCapabilities(caps: any): any {
+    // For simple inline representation
+    const capabilities: string[] = [];
+
+    for (const [key, value] of Object.entries(caps)) {
+      if (typeof value === 'object' && value !== null && Object.keys(value).length > 0) {
+        for (const subKey of Object.keys(value)) {
+          capabilities.push(`${key}.${subKey}`);
+        }
+      } else {
+        capabilities.push(key);
+      }
+    }
+
+    return { includes: capabilities };
   }
 }
 
@@ -799,12 +1141,17 @@ class MCPDSLCompiler {
 function parseMCPDSL(input: string): any {
   const lexer = new MCPDSLLexer(input);
   const tokens = lexer.tokenize();
-  
+
   const parser = new MCPDSLParser(tokens);
   const ast = parser.parse();
-  
+
   const compiler = new MCPDSLCompiler();
   return compiler.compile(ast);
+}
+
+function decompileMCPJSON(json: any): string {
+  const decompiler = new MCPDSLDecompiler();
+  return decompiler.decompile(json);
 }
 
 // Test examples
@@ -846,7 +1193,7 @@ const examples = [
 ];
 
 // Export for use in other modules
-export { MCPDSLLexer, MCPDSLParser, MCPDSLCompiler, parseMCPDSL };
+export { MCPDSLLexer, MCPDSLParser, MCPDSLCompiler, MCPDSLDecompiler, parseMCPDSL, decompileMCPJSON };
 
 // Only run examples if this file is executed directly (not imported)
 if (import.meta.main) {
