@@ -1,10 +1,9 @@
-# MCP-DSL: A Token-Efficient Domain Specific Language for Model Context Protocol
+# MCP-DSL Specification
 
-## Core Philosophy
+Version: 1.0.0
+Protocol Version: 2025-03-26
 
-Functional, symbol-rich syntax replacing JSON verbosity. 60-80% token reduction with full JSON compatibility.
-
-## Basic Syntax
+## Syntax Reference
 
 ### 1. Message Format
 
@@ -385,15 +384,6 @@ Compiles to:
 - `?` → `"required": false`
 - `@` → Annotation/metadata fields
 
-## Benefits
-
-1. **Token Efficiency**: 60-80% reduction in tokens vs JSON
-2. **Readability**: Clear visual hierarchy with symbols
-3. **Type Safety**: Explicit type annotations
-4. **Extensibility**: Easy to add new operators/types
-5. **Bidirectional**: Can compile to/from JSON
-6. **Progressive**: Supports inline for simple, block for complex
-
 ## Grammar (EBNF-style)
 
 ```ebnf
@@ -426,15 +416,3 @@ annotation  ::= '@' name (':' value)?
 
 block       ::= '{' (field | annotation | nested)* '}'
 ```
-
-## Migration Path
-
-1. **Parser**: Build MCP-DSL parser (500 lines of code)
-2. **Compiler**: DSL→JSON transformer (300 lines)
-3. **Decompiler**: JSON→DSL for round-trip (300 lines)
-4. **Validator**: Schema validation (200 lines)
-5. **IDE Support**: Syntax highlighting, autocomplete
-
-## Conclusion
-
-MCP-DSL reduces token usage by 60-80% while maintaining full MCP expressiveness. The functional, symbol-rich syntax prioritizes conciseness, clarity, and JSON compatibility, making it ideal for LLM interactions where every token counts.

@@ -529,6 +529,47 @@ All tests based on real examples from the [official MCP specification](https://g
 
 ---
 
+## Implementation Status
+
+### ✅ Completed
+
+- **Parser + Compiler**: Two production-ready implementations
+  - **TypeScript (Bun)**: ~850 lines, excellent developer experience, hot reload
+  - **Nim**: ~700 lines, 1.90x faster, native compilation, low memory footprint
+- **Test Coverage**: 15 comprehensive tests per implementation validating MCP spec compliance
+- **Performance Benchmarks**: Automated comparison framework measuring real-world speedups
+- **Documentation**: Complete specification, usage examples, and performance analysis
+
+### 🚧 Future Work
+
+- **Decompiler** (JSON → DSL): Round-trip conversion for existing MCP messages
+- **Schema Validator**: Compile-time validation of DSL syntax and semantics
+- **IDE Support**: Syntax highlighting, autocomplete, error checking for VSCode/IntelliJ
+- **Streaming Parser**: Handle large message streams efficiently
+- **CLI Tool**: Standalone converter for DSL ↔ JSON transformations
+- **Language Bindings**: Python, Rust, Go implementations
+
+### 📦 Getting Started
+
+```bash
+# Clone and setup
+git clone <repo-url>
+cd MCP-DSL
+mise trust && mise install
+
+# Run all tests
+mise run test-all
+
+# Run performance benchmark
+mise run bench
+
+# Try examples
+mise run verify        # TypeScript
+mise run verify-nim    # Nim
+```
+
+---
+
 ## Learn More
 
 This README presents the vision and value proposition for MCP-DSL. For complete technical details:
