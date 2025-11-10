@@ -1,39 +1,43 @@
 [tools]
 bun = "latest"
-nim = "latest"
-go = "latest"
+node = "latest"  # For npm compatibility if needed
 
 [tasks.test]
-description = "Run MCP-DSL test suite (TypeScript)"
-run = "cd implementations/typescript && bun test"
+description = "Run MCP-DSL test suite"
+run = "bun test"
 
 [tasks.test-watch]
-description = "Run tests in watch mode (TypeScript)"
-run = "cd implementations/typescript && bun test --watch"
+description = "Run tests in watch mode"
+run = "bun test --watch"
 
-[tasks.test-go]
-description = "Run MCP-DSL test suite (Go)"
-run = "cd implementations/go && go test -v"
-
-[tasks.test-nim]
-description = "Run MCP-DSL test suite (Nim)"
-run = "cd implementations/nim && nim c -r mcp_dsl_implementation_test.nim"
-
-[tasks.test-all]
-description = "Run all test suites (TypeScript, Go, and Nim)"
-run = "mise run test && mise run test-go && mise run test-nim"
-
-[tasks.bench]
-description = "Run performance benchmark comparison"
+[tasks.lint]
+description = "Validate DSL files in examples/"
 run = """
-cd implementations
-nim c -d:release --opt:speed --mm:orc -o:benchmark_nim nim/benchmark_nim.nim
-cd go && go build -o ../benchmark_go benchmark_go.go mcp_dsl_implementation.go && cd ..
-bun run typescript/benchmark.ts 10000
-./benchmark_nim 10000
-./benchmark_go 10000
+if [ -d examples ]; then
+  for file in examples/*.mcp; do
+    [ -f "$file" ] && bun run src/cli.ts lint -i "$file"
+  done
+else
+  echo "No examples directory found"
+fi
 """
 
-[tasks.verify]
-description = "Run round-trip demo (TypeScript)"
-run = "cd implementations/typescript && bun run round-trip-demo.ts"
+[tasks.format]
+description = "Format DSL files in examples/"
+run = """
+if [ -d examples ]; then
+  for file in examples/*.mcp; do
+    [ -f "$file" ] && bun run src/cli.ts format -i "$file" -o "$file"
+  done
+else
+  echo "No examples directory found"
+fi
+"""
+
+[tasks.build]
+description = "Build CLI tool (verify it runs)"
+run = "bun run src/cli.ts --help"
+
+[tasks.check]
+description = "Run all checks (tests + lint)"
+run = "mise run test && mise run build"

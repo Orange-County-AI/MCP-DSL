@@ -2,13 +2,56 @@
   "name": "mcp-dsl",
   "version": "0.1.0",
   "description": "A token-efficient Domain Specific Language for Model Context Protocol",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "dsl",
+    "json-rpc",
+    "compiler",
+    "parser",
+    "llm",
+    "ai",
+    "token-efficiency"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Orange-County-AI/MCP-DSL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Orange-County-AI/MCP-DSL/issues"
+  },
+  "homepage": "https://github.com/Orange-County-AI/MCP-DSL#readme",
+  "author": "Orange County AI",
+  "license": "MIT",
   "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "GRAMMAR.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "bin": {
+    "mcp-dsl": "./src/cli.ts"
+  },
   "scripts": {
     "test": "bun test",
-    "test:watch": "bun test --watch"
+    "test:watch": "bun test --watch",
+    "cli": "bun run src/cli.ts",
+    "lint": "bun run src/cli.ts lint",
+    "format": "bun run src/cli.ts format",
+    "compile": "bun run src/cli.ts compile",
+    "decompile": "bun run src/cli.ts decompile"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "fast-check": "^3.15.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
