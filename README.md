@@ -379,46 +379,49 @@ Unlike general serialization formats, MCP-DSL understands protocol semantics:
 
 ---
 
-## Implementations
+## Complete Grammar Specification
 
-A TypeScript implementation is provided, with additional implementations available in Go and Nim.
+MCP-DSL has a complete, parser-ready formal grammar:
 
-**See [implementations/README.md](implementations/README.md)** for details, setup instructions, and implementation requirements.
+**[📖 GRAMMAR.md](GRAMMAR.md)** - Complete EBNF grammar with zero left recursion
+
+The grammar specification includes:
+- Complete lexical structure and token definitions
+- Message types (requests, responses, notifications, errors)
+- Type system with union types, casts, and modifiers
+- Value system with primitives, structures, and content types
+- Semantic disambiguation rules for context-sensitive constructs
+- Field name canonicalization table (DSL → JSON mappings)
+- Type compilation rules (DSL → JSON Schema)
+- Parser implementation notes
+
+The grammar is suitable for ANTLR, Yacc, Bison, recursive descent, and PEG parsers.
 
 ---
 
-## Implementation Status
+## Implementation Roadmap
 
-### ✅ Completed
+### Phase 1: TypeScript Parser & Compiler ✅
 
-- **Parser + Compiler + Decompiler**: Three production-ready implementations with full round-trip support
-- **Test Coverage**: Comprehensive test suites validating MCP spec compliance and round-trip fidelity
-- **Performance Benchmarks**: Automated comparison framework across all implementations
-- **Documentation**: Complete specification, usage examples, and detailed performance analysis
+A TypeScript reference implementation is in development:
 
-### 🚧 Future Work
+- **Lexer**: Tokenize DSL input
+- **Parser**: Build AST from tokens (zero left recursion)
+- **Compiler**: Transform DSL → JSON-RPC 2.0
+- **Decompiler**: Transform JSON-RPC → DSL
+- **Round-trip validation**: Semantic preservation tests
 
-- **Schema Validator**: Compile-time validation of DSL syntax and semantics
-- **IDE Support**: Syntax highlighting, autocomplete, error checking for VSCode/IntelliJ
-- **Streaming Parser**: Handle large message streams efficiently
+### Phase 2: Tooling
+
+- **Schema Validator**: Compile-time validation of DSL syntax
 - **CLI Tool**: Standalone converter for DSL ↔ JSON transformations
-- **Additional Language Bindings**: Python, Rust implementations
+- **Test Suite**: Comprehensive compliance and edge case tests
 
----
+### Phase 3: Ecosystem
 
-## Learn More
-
-This README presents the vision and value proposition for MCP-DSL. For complete technical details:
-
-**[📖 Read the Full Specification](mcp-dsl-spec.md)**
-
-The specification includes:
-- Complete EBNF grammar
-- Compilation rules (DSL ↔ JSON)
-- Type system mappings
-- Advanced features (pagination, subscriptions, sampling)
-- Migration path and tooling roadmap
-- Additional real-world examples
+- **IDE Support**: Syntax highlighting and autocomplete for VSCode
+- **Language Bindings**: Python, Rust, Go implementations
+- **Online Playground**: Interactive DSL editor and converter
 
 ---
 
@@ -435,8 +438,9 @@ MCP-DSL makes the protocol more accessible and cost-effective without compromisi
 
 ---
 
-**Status**: Working implementation with comprehensive test coverage. Ready for evaluation and feedback.
+## Status
 
+**Grammar**: Complete and parser-ready (v1.0.0)
+**Implementation**: TypeScript reference implementation in development
 **License**: MIT
-
-**Contributing**: This is an evolving specification. Feedback, implementation examples, and contributions welcome.
+**Contributing**: Feedback, implementation examples, and contributions welcome
