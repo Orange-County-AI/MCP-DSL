@@ -51,6 +51,9 @@ export class Compiler implements AstVisitor<any> {
     definitions: {},
   };
 
+  // Store type aliases for resolution during compilation
+  private typeAliases: Map<string, AST.TypeExprNode> = new Map();
+
   /**
    * Compile a document AST to JSON-RPC messages and definitions
    */
@@ -59,7 +62,17 @@ export class Compiler implements AstVisitor<any> {
       messages: [],
       definitions: {},
     };
+    this.typeAliases = new Map();
 
+    // First pass: collect type aliases
+    for (const node of document.body) {
+      if (node.type === 'TypeAlias') {
+        const typeAlias = node as AST.TypeAliasNode;
+        this.typeAliases.set(typeAlias.name, typeAlias.typeExpr);
+      }
+    }
+
+    // Second pass: compile messages and definitions
     for (const node of document.body) {
       if (AST.isMessageNode(node)) {
         const message = visit(node, this);
@@ -70,6 +83,7 @@ export class Compiler implements AstVisitor<any> {
       } else if (node.type === 'ServerBlock') {
         this.result.serverInfo = visit(node, this);
       }
+      // Type aliases are already collected, no need to visit
     }
 
     return this.result;
@@ -115,6 +129,12 @@ export class Compiler implements AstVisitor<any> {
 
   visitVersion(node: AST.VersionNode): string {
     return `${node.major}.${node.minor}.${node.patch}`;
+  }
+
+  visitTypeAlias(node: AST.TypeAliasNode): any {
+    // Type aliases are compile-time only, they produce no output
+    // They're used to resolve references during compilation
+    return null;
   }
 
   // ============================================================================
@@ -256,7 +276,19 @@ export class Compiler implements AstVisitor<any> {
     const annotations: Record<string, any> = {};
 
     for (const prop of node.properties) {
-      if (prop.type === 'FieldAssignment') {
+      if (prop.type === 'Spread') {
+        // Handle spread operator - resolve the type alias and merge its fields
+        const spreadNode = prop as AST.SpreadNode;
+        const aliasType = this.typeAliases.get(spreadNode.name);
+        if (aliasType && aliasType.type === 'ObjectType') {
+          // Compile the object type to get its properties
+          const objectSchema = visit(aliasType, this) as JsonSchema;
+          if (objectSchema.properties) {
+            Object.assign(result, objectSchema.properties);
+          }
+        }
+        // If alias not found or not an object type, silently skip (could add warning)
+      } else if (prop.type === 'FieldAssignment') {
         const assignment = prop as AST.FieldAssignmentNode;
         const jsonFieldName = getJsonFieldName(assignment.name);
         let value = visit(assignment.value, this);
@@ -311,6 +343,12 @@ export class Compiler implements AstVisitor<any> {
   visitCastValue(node: AST.CastValueNode): any {
     // Cast values don't affect JSON output, they're type hints
     return visit(node.value, this);
+  }
+
+  visitSpread(node: AST.SpreadNode): any {
+    // Spread is handled specially in visitObject
+    // Return a marker that visitObject can detect
+    return { __spread__: node.name };
   }
 
   // ============================================================================
@@ -434,6 +472,10 @@ export class Compiler implements AstVisitor<any> {
     return { ...TYPE_MAPPINGS[node.primitiveType] };
   }
 
+  visitNullType(node: AST.NullTypeNode): JsonSchema {
+    return { type: 'null' };
+  }
+
   visitArrayType(node: AST.ArrayTypeNode): JsonSchema {
     return {
       type: 'array',
@@ -446,13 +488,31 @@ export class Compiler implements AstVisitor<any> {
     const required: string[] = [];
 
     for (const field of node.fields) {
-      properties[field.name] = visit(field.typeExpr, this);
+      if (field.type === 'Spread') {
+        // Handle spread operator - merge fields from the referenced type alias
+        const spreadNode = field as AST.SpreadNode;
+        const aliasType = this.typeAliases.get(spreadNode.name);
+        if (aliasType && aliasType.type === 'ObjectType') {
+          // Recursively compile the spread type's fields
+          const spreadSchema = this.visitObjectType(aliasType as AST.ObjectTypeNode);
+          if (spreadSchema.properties) {
+            Object.assign(properties, spreadSchema.properties);
+          }
+          if (spreadSchema.required) {
+            required.push(...spreadSchema.required);
+          }
+        }
+      } else {
+        // Regular field definition
+        const fieldDef = field as AST.FieldDefNode;
+        properties[fieldDef.name] = visit(fieldDef.typeExpr, this);
 
-      // Check if field is required (has ! modifier)
-      if (field.typeExpr.type === 'PrimaryType') {
-        const primaryType = field.typeExpr as AST.PrimaryTypeNode;
-        if (primaryType.modifier === '!') {
-          required.push(field.name);
+        // Check if field is required (has ! modifier)
+        if (fieldDef.typeExpr.type === 'PrimaryType') {
+          const primaryType = fieldDef.typeExpr as AST.PrimaryTypeNode;
+          if (primaryType.modifier === '!') {
+            required.push(fieldDef.name);
+          }
         }
       }
     }

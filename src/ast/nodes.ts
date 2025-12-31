@@ -19,7 +19,13 @@ export interface BaseNode {
 
 export interface DocumentNode extends BaseNode {
   type: 'Document';
-  body: (MessageNode | DefinitionNode | ServerBlockNode)[];
+  body: (MessageNode | DefinitionNode | ServerBlockNode | TypeAliasNode)[];
+}
+
+export interface TypeAliasNode extends BaseNode {
+  type: 'TypeAlias';
+  name: string;
+  typeExpr: TypeExprNode;
 }
 
 export interface ServerBlockNode extends BaseNode {
@@ -125,6 +131,7 @@ export type TypeExprNode =
   | CastTypeNode
   | PrimaryTypeNode
   | PrimitiveTypeNode
+  | NullTypeNode
   | ArrayTypeNode
   | ObjectTypeNode
   | EnumTypeNode
@@ -152,6 +159,10 @@ export interface PrimitiveTypeNode extends BaseNode {
   primitiveType: 'str' | 'int' | 'num' | 'bool' | 'uri' | 'blob';
 }
 
+export interface NullTypeNode extends BaseNode {
+  type: 'NullType';
+}
+
 export interface ArrayTypeNode extends BaseNode {
   type: 'ArrayType';
   elementType?: TypeExprNode;
@@ -159,12 +170,12 @@ export interface ArrayTypeNode extends BaseNode {
 
 export interface ObjectTypeNode extends BaseNode {
   type: 'ObjectType';
-  fields: FieldDefNode[];
+  fields: (FieldDefNode | SpreadNode)[];
 }
 
 export interface EnumTypeNode extends BaseNode {
   type: 'EnumType';
-  values: string[];
+  values: string[]; // Can be identifiers or string literals (both stored as strings)
 }
 
 export interface ReferenceTypeNode extends BaseNode {
@@ -231,8 +242,13 @@ export interface ArrayNode extends BaseNode {
 
 export interface ObjectNode extends BaseNode {
   type: 'Object';
-  properties: (FieldAssignmentNode | AnnotationNode | DefinitionNode)[];
+  properties: (FieldAssignmentNode | AnnotationNode | DefinitionNode | SpreadNode)[];
   contextKind?: ContextKind; // For semantic validation
+}
+
+export interface SpreadNode extends BaseNode {
+  type: 'Spread';
+  name: string; // The type alias name to spread
 }
 
 export interface FieldAssignmentNode extends BaseNode {
@@ -350,5 +366,13 @@ export function isContentValueNode(node: BaseNode): node is ContentValueNode {
 }
 
 export function isTypeExprNode(node: BaseNode): node is TypeExprNode {
-  return ['UnionType', 'CastType', 'PrimaryType', 'PrimitiveType', 'ArrayType', 'ObjectType', 'EnumType', 'ReferenceType'].includes(node.type);
+  return ['UnionType', 'CastType', 'PrimaryType', 'PrimitiveType', 'NullType', 'ArrayType', 'ObjectType', 'EnumType', 'ReferenceType'].includes(node.type);
+}
+
+export function isTypeAliasNode(node: BaseNode): node is TypeAliasNode {
+  return node.type === 'TypeAlias';
+}
+
+export function isSpreadNode(node: BaseNode): node is SpreadNode {
+  return node.type === 'Spread';
 }

@@ -1,7 +1,7 @@
 # MCP-DSL Grammar Specification
 
-**Version**: 1.0.0
-**Date**: 2025-11-10
+**Version**: 2.0.0
+**Date**: 2025-12-31
 
 ## Lexical Structure
 
@@ -23,9 +23,10 @@ COMMENT     ::= '#' [^\n]* '\n'
 ## Document Structure
 
 ```ebnf
-document ::= (message | definition | server_block)*
+document ::= (message | definition | server_block | type_def)*
 server_block ::= 'server' IDENTIFIER version? block
 version ::= 'v' (INTEGER '.' INTEGER '.' INTEGER)
+type_def ::= 'type' IDENTIFIER '=' type_expr
 ```
 
 ## Messages
@@ -40,7 +41,7 @@ error ::= 'x' '#' message_id error_code ':' error_message data?
 
 message_id ::= INTEGER
 error_code ::= INTEGER
-error_message ::= STRING | IDENTIFIER
+error_message ::= STRING
 
 params ::= inline_object | block
 result ::= value
@@ -79,14 +80,15 @@ base_type ::= primitive_type
             | reference_type
             | '(' type_expr ')'
 
-primitive_type ::= 'str' | 'int' | 'num' | 'bool' | 'uri' | 'blob'
+primitive_type ::= 'str' | 'int' | 'num' | 'bool' | 'uri' | 'blob' | 'null'
 array_type ::= '[' type_expr? ']'
 object_type ::= '{' field_list? '}'
 enum_type ::= 'enum' '[' enum_values ']'
 reference_type ::= IDENTIFIER
 modifier ::= '!' | '?'
 
-enum_values ::= IDENTIFIER (',' IDENTIFIER)*
+enum_values ::= enum_value (',' enum_value)* ','?
+enum_value ::= IDENTIFIER | STRING
 field_list ::= field_def (',' field_def)* ','?
 field_def ::= IDENTIFIER ':' type_expr default_value?
 default_value ::= '=' value
@@ -115,8 +117,9 @@ object ::= object_literal
 inline_object ::= object_literal
 block ::= object_literal
 object_literal ::= '{' object_content '}'
-object_content ::= (field_assignment | annotation | nested_definition)* ','?
+object_content ::= (field_assignment | annotation | nested_definition | spread)* ','?
 field_assignment ::= IDENTIFIER modifier? ':' value
+spread ::= '...' IDENTIFIER
 nested_definition ::= definition
 
 content_value ::= text_content
@@ -164,7 +167,7 @@ capability_path ::= IDENTIFIER ('.' IDENTIFIER)*
 
 (* Role messages for prompts *)
 role_message ::= role_indicator ':' (STRING | multiline_string | content_expression)
-role_indicator ::= 'u' | 'a' | 's'
+role_indicator ::= 'u' | 'user' | 'a' | 'assistant' | 's' | 'system'
 content_expression ::= composite_content
 composite_content ::= content_value ('+' content_value)*
 
@@ -242,7 +245,39 @@ DSL abbreviations map to full JSON-RPC field names:
 | `{}` | `{"type": "object"}` |
 | `enum[a,b,c]` | `{"type": "string", "enum": ["a", "b", "c"]}` |
 | `str\|int` | `{"oneOf": [{"type": "string"}, {"type": "integer"}]}` |
+| `str\|null` | `{"oneOf": [{"type": "string"}, {"type": "null"}]}` |
 | `str::date-time` | `{"type": "string", "format": "date-time"}` |
+| `null` | `{"type": "null"}` |
+
+## Type Aliases
+
+Type aliases allow defining reusable type expressions:
+
+```mcp-dsl
+type UserId = str!
+type Status = enum[pending, active, suspended]
+type UserFields = { id: UserId, status: Status }
+
+T get_user {
+  in: { ...UserFields, includeDeleted?: bool }
+}
+```
+
+Type aliases are compile-time only and produce no JSON output. They are resolved during compilation.
+
+## Spread Operator
+
+The spread operator (`...`) allows merging fields from a type alias into an object:
+
+```mcp-dsl
+type BaseFields = { id: str!, created: str::date-time }
+
+T create_user {
+  in: { ...BaseFields, name: str!, email: str! }
+}
+```
+
+This compiles to an object with all fields from `BaseFields` plus the additional fields.
 
 ## Annotation Mappings
 

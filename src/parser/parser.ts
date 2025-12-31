@@ -38,6 +38,8 @@ export class Parser {
         body.push(this.parseDefinition());
       } else if (this.cursor.check(TokenType.SERVER)) {
         body.push(this.parseServerBlock());
+      } else if (this.cursor.check(TokenType.TYPE)) {
+        body.push(this.parseTypeAlias());
       } else {
         throw this.cursor.error(`Unexpected token: ${this.cursor.current().type}`);
       }
@@ -101,6 +103,29 @@ export class Parser {
       minor: parseInt(match[2]),
       patch: parseInt(match[3]),
       range: { start, end: versionToken.range.end },
+    };
+  }
+
+  // ============================================================================
+  // Type Aliases
+  // ============================================================================
+
+  /**
+   * type_def ::= 'type' IDENTIFIER '=' type_expr
+   */
+  private parseTypeAlias(): AST.TypeAliasNode {
+    const start = this.cursor.current().range.start;
+
+    this.cursor.expect(TokenType.TYPE);
+    const name = this.cursor.expect(TokenType.IDENTIFIER).lexeme;
+    this.cursor.expect(TokenType.EQUALS);
+    const typeExpr = this.parseTypeExpr();
+
+    return {
+      type: 'TypeAlias',
+      name,
+      typeExpr,
+      range: { start, end: this.cursor.current().range.end },
     };
   }
 
@@ -230,17 +255,9 @@ export class Parser {
     // Skip whitespace/newlines before message
     this.cursor.skip(TokenType.NEWLINE, TokenType.COMMENT);
 
-    let message: string;
-    const messageToken = this.cursor.current();
-    if (messageToken.type === TokenType.STRING) {
-      message = messageToken.literal as string;
-      this.cursor.next();
-    } else if (messageToken.type === TokenType.IDENTIFIER) {
-      message = messageToken.lexeme;
-      this.cursor.next();
-    } else {
-      throw this.cursor.error('Expected error message');
-    }
+    // Error message must be a string
+    const messageToken = this.cursor.expect(TokenType.STRING);
+    const message = messageToken.literal as string;
 
     let data: AST.ValueNode | undefined;
     if (this.cursor.check(TokenType.LBRACE)) {
@@ -444,19 +461,22 @@ export class Parser {
     const start = this.cursor.current().range.start;
 
     this.cursor.expect(TokenType.LBRACE);
-    const properties: (AST.FieldAssignmentNode | AST.AnnotationNode | AST.DefinitionNode)[] = [];
+    const properties: (AST.FieldAssignmentNode | AST.AnnotationNode | AST.DefinitionNode | AST.SpreadNode)[] = [];
 
     while (!this.cursor.check(TokenType.RBRACE) && !this.cursor.isAtEnd()) {
       this.cursor.skip(TokenType.NEWLINE, TokenType.COMMENT);
 
       if (this.cursor.check(TokenType.AT)) {
         properties.push(this.parseAnnotation());
+      } else if (this.cursor.check(TokenType.ELLIPSIS)) {
+        properties.push(this.parseSpread());
       } else if (this.isDefinitionStart()) {
         properties.push(this.parseDefinition());
       } else if (this.cursor.check(TokenType.IDENTIFIER) ||
                  this.cursor.checkAny(TokenType.STR, TokenType.INT, TokenType.NUM, TokenType.BOOL, TokenType.URI, TokenType.BLOB,
                                       TokenType.IN, TokenType.OUT, TokenType.TXT, TokenType.IMG, TokenType.AUD, TokenType.RES,
-                                      TokenType.ROLE_USER, TokenType.ROLE_ASSISTANT, TokenType.ROLE_SYSTEM)) {
+                                      TokenType.ROLE_USER, TokenType.ROLE_ASSISTANT, TokenType.ROLE_SYSTEM,
+                                      TokenType.ROLE_USER_LONG, TokenType.ROLE_ASSISTANT_LONG, TokenType.ROLE_SYSTEM_LONG)) {
         properties.push(this.parseFieldAssignment());
       } else {
         break;
@@ -478,6 +498,18 @@ export class Parser {
     };
   }
 
+  private parseSpread(): AST.SpreadNode {
+    const start = this.cursor.current().range.start;
+    this.cursor.expect(TokenType.ELLIPSIS);
+    const name = this.cursor.expect(TokenType.IDENTIFIER).lexeme;
+
+    return {
+      type: 'Spread',
+      name,
+      range: { start, end: this.cursor.current().range.end },
+    };
+  }
+
   private parseFieldAssignment(): AST.FieldAssignmentNode {
     const start = this.cursor.current().range.start;
 
@@ -486,7 +518,8 @@ export class Parser {
     if (!this.cursor.check(TokenType.IDENTIFIER) &&
         !this.cursor.checkAny(TokenType.STR, TokenType.INT, TokenType.NUM, TokenType.BOOL, TokenType.URI, TokenType.BLOB,
                              TokenType.IN, TokenType.OUT, TokenType.TXT, TokenType.IMG, TokenType.AUD, TokenType.RES,
-                             TokenType.ROLE_USER, TokenType.ROLE_ASSISTANT, TokenType.ROLE_SYSTEM)) {
+                             TokenType.ROLE_USER, TokenType.ROLE_ASSISTANT, TokenType.ROLE_SYSTEM,
+                             TokenType.ROLE_USER_LONG, TokenType.ROLE_ASSISTANT_LONG, TokenType.ROLE_SYSTEM_LONG)) {
       throw this.cursor.error('Expected field name');
     }
     const name = nameToken.lexeme;
@@ -502,7 +535,15 @@ export class Parser {
     }
 
     this.cursor.expect(TokenType.COLON);
-    const value = this.parseValue();
+
+    // For schema fields (in, out), parse as type expression
+    // These fields expect JSON Schema type definitions
+    let value: AST.ValueNode;
+    if (name === 'in' || name === 'out') {
+      value = this.parseTypeExpr() as AST.ValueNode;
+    } else {
+      value = this.parseValue();
+    }
 
     return {
       type: 'FieldAssignment',
@@ -698,6 +739,8 @@ export class Parser {
   private parseBaseType(): AST.TypeExprNode {
     if (this.cursor.checkAny(TokenType.STR, TokenType.INT, TokenType.NUM, TokenType.BOOL, TokenType.URI, TokenType.BLOB)) {
       return this.parsePrimitiveType();
+    } else if (this.cursor.check(TokenType.NULL)) {
+      return this.parseNullType();
     } else if (this.cursor.check(TokenType.LBRACKET)) {
       return this.parseArrayType();
     } else if (this.cursor.check(TokenType.LBRACE)) {
@@ -714,6 +757,14 @@ export class Parser {
     }
 
     throw this.cursor.error('Expected type expression');
+  }
+
+  private parseNullType(): AST.NullTypeNode {
+    const token = this.cursor.expect(TokenType.NULL);
+    return {
+      type: 'NullType',
+      range: token.range,
+    };
   }
 
   private parsePrimitiveType(): AST.PrimitiveTypeNode {
@@ -775,11 +826,16 @@ export class Parser {
     const start = this.cursor.current().range.start;
 
     this.cursor.expect(TokenType.LBRACE);
-    const fields: AST.FieldDefNode[] = [];
+    const fields: (AST.FieldDefNode | AST.SpreadNode)[] = [];
 
     while (!this.cursor.check(TokenType.RBRACE) && !this.cursor.isAtEnd()) {
       this.cursor.skip(TokenType.NEWLINE, TokenType.COMMENT);
-      fields.push(this.parseFieldDef());
+
+      if (this.cursor.check(TokenType.ELLIPSIS)) {
+        fields.push(this.parseSpread());
+      } else {
+        fields.push(this.parseFieldDef());
+      }
 
       if (this.cursor.check(TokenType.COMMA)) {
         this.cursor.next();
@@ -800,7 +856,20 @@ export class Parser {
   private parseFieldDef(): AST.FieldDefNode {
     const start = this.cursor.current().range.start;
 
-    const name = this.cursor.expect(TokenType.IDENTIFIER).lexeme;
+    // Field names can be identifiers or certain keywords (like 's', 'a', 'u' which are role indicators)
+    let name: string;
+    if (this.cursor.check(TokenType.IDENTIFIER)) {
+      name = this.cursor.expect(TokenType.IDENTIFIER).lexeme;
+    } else if (this.cursor.checkAny(TokenType.ROLE_USER, TokenType.ROLE_ASSISTANT, TokenType.ROLE_SYSTEM,
+                                    TokenType.ROLE_USER_LONG, TokenType.ROLE_ASSISTANT_LONG, TokenType.ROLE_SYSTEM_LONG,
+                                    TokenType.STR, TokenType.INT, TokenType.NUM, TokenType.BOOL, TokenType.URI, TokenType.BLOB,
+                                    TokenType.IN, TokenType.OUT)) {
+      name = this.cursor.current().lexeme;
+      this.cursor.next();
+    } else {
+      throw this.cursor.error('Expected field name');
+    }
+
     this.cursor.expect(TokenType.COLON);
     const typeExpr = this.parseTypeExpr();
 
@@ -828,7 +897,14 @@ export class Parser {
     const values: string[] = [];
 
     while (!this.cursor.check(TokenType.RBRACKET) && !this.cursor.isAtEnd()) {
-      values.push(this.cursor.expect(TokenType.IDENTIFIER).lexeme);
+      // Accept either identifier or string literal
+      if (this.cursor.check(TokenType.IDENTIFIER)) {
+        values.push(this.cursor.expect(TokenType.IDENTIFIER).lexeme);
+      } else if (this.cursor.check(TokenType.STRING)) {
+        values.push(this.cursor.expect(TokenType.STRING).literal as string);
+      } else {
+        throw this.cursor.error('Expected identifier or string in enum values');
+      }
 
       if (this.cursor.check(TokenType.COMMA)) {
         this.cursor.next();

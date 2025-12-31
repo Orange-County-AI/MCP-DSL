@@ -69,7 +69,14 @@ export class Lexer {
         this.addToken(TokenType.COMMA, c);
         break;
       case '.':
-        this.addToken(TokenType.DOT, c);
+        // Check for ellipsis (...)
+        if (this.peek() === '.' && this.peekNext() === '.') {
+          this.advance(); // consume second .
+          this.advance(); // consume third .
+          this.addToken(TokenType.ELLIPSIS, '...');
+        } else {
+          this.addToken(TokenType.DOT, c);
+        }
         break;
       case '+':
         this.addToken(TokenType.PLUS, c);
@@ -191,6 +198,8 @@ export class Lexer {
         return TokenType.SERVER;
       case 'enum':
         return TokenType.ENUM;
+      case 'type':
+        return TokenType.TYPE;
       case 'true':
         return TokenType.TRUE;
       case 'false':
@@ -219,12 +228,22 @@ export class Lexer {
         return TokenType.RES;
       case 'emb':
         return TokenType.EMB;
+      case 'in':
+        return TokenType.IN;
+      case 'out':
+        return TokenType.OUT;
       case 'u':
         return TokenType.ROLE_USER;
       case 'a':
         return TokenType.ROLE_ASSISTANT;
       case 's':
         return TokenType.ROLE_SYSTEM;
+      case 'user':
+        return TokenType.ROLE_USER_LONG;
+      case 'assistant':
+        return TokenType.ROLE_ASSISTANT_LONG;
+      case 'system':
+        return TokenType.ROLE_SYSTEM_LONG;
       case 'R':
         return TokenType.RESOURCE;
       case 'T':

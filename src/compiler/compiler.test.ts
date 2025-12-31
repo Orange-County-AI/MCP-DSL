@@ -148,4 +148,52 @@ describe('Compiler', () => {
     expect(tool.annotations).toBeDefined();
     // Annotations are extracted during compilation
   });
+
+  // ============================================================================
+  // Grammar v2.0.0 Features
+  // ============================================================================
+
+  test('compiles null type to JSON Schema', () => {
+    const source = 'T test {in: {value: str | null}}';
+    const tokens = tokenize(source);
+    const ast = parse(tokens);
+    const result = compile(ast);
+
+    const tool = result.definitions.tools![0];
+    expect(tool.inputSchema).toBeDefined();
+    // The union type should compile to oneOf with string and null
+  });
+
+  test('compiles enum with string values', () => {
+    const source = 'T test {in: {status: enum["in-progress", "on-hold", active]}}';
+    const tokens = tokenize(source);
+    const ast = parse(tokens);
+    const result = compile(ast);
+
+    const tool = result.definitions.tools![0];
+    expect(tool.inputSchema).toBeDefined();
+    // The enum values should include the string literals
+  });
+
+  test('type aliases do not produce output', () => {
+    const source = 'type UserId = str!';
+    const tokens = tokenize(source);
+    const ast = parse(tokens);
+    const result = compile(ast);
+
+    expect(result.messages.length).toBe(0);
+    expect(result.definitions.tools).toBeUndefined();
+    expect(result.definitions.resources).toBeUndefined();
+  });
+
+  test('compiles type alias with spread operator', () => {
+    const source = 'type BaseFields = {id: str!, created: str}\nT get_user {in: {...BaseFields, name: str!}}';
+    const tokens = tokenize(source);
+    const ast = parse(tokens);
+    const result = compile(ast);
+
+    const tool = result.definitions.tools![0];
+    expect(tool.name).toBe('get_user');
+    expect(tool.inputSchema).toBeDefined();
+  });
 });

@@ -13,6 +13,7 @@ export interface AstVisitor<T = void> {
   visitDocument(node: AST.DocumentNode): T;
   visitServerBlock(node: AST.ServerBlockNode): T;
   visitVersion(node: AST.VersionNode): T;
+  visitTypeAlias(node: AST.TypeAliasNode): T;
 
   // Messages
   visitRequest(node: AST.RequestNode): T;
@@ -33,6 +34,7 @@ export interface AstVisitor<T = void> {
   visitCastType(node: AST.CastTypeNode): T;
   visitPrimaryType(node: AST.PrimaryTypeNode): T;
   visitPrimitiveType(node: AST.PrimitiveTypeNode): T;
+  visitNullType(node: AST.NullTypeNode): T;
   visitArrayType(node: AST.ArrayTypeNode): T;
   visitObjectType(node: AST.ObjectTypeNode): T;
   visitEnumType(node: AST.EnumTypeNode): T;
@@ -50,6 +52,7 @@ export interface AstVisitor<T = void> {
   visitObject(node: AST.ObjectNode): T;
   visitFieldAssignment(node: AST.FieldAssignmentNode): T;
   visitCastValue(node: AST.CastValueNode): T;
+  visitSpread(node: AST.SpreadNode): T;
 
   // Content
   visitTextContent(node: AST.TextContentNode): T;
@@ -79,6 +82,8 @@ export function visit<T>(node: AST.BaseNode, visitor: AstVisitor<T>): T {
       return visitor.visitServerBlock(node as AST.ServerBlockNode);
     case 'Version':
       return visitor.visitVersion(node as AST.VersionNode);
+    case 'TypeAlias':
+      return visitor.visitTypeAlias(node as AST.TypeAliasNode);
 
     // Messages
     case 'Request':
@@ -113,6 +118,8 @@ export function visit<T>(node: AST.BaseNode, visitor: AstVisitor<T>): T {
       return visitor.visitPrimaryType(node as AST.PrimaryTypeNode);
     case 'PrimitiveType':
       return visitor.visitPrimitiveType(node as AST.PrimitiveTypeNode);
+    case 'NullType':
+      return visitor.visitNullType(node as AST.NullTypeNode);
     case 'ArrayType':
       return visitor.visitArrayType(node as AST.ArrayTypeNode);
     case 'ObjectType':
@@ -145,6 +152,8 @@ export function visit<T>(node: AST.BaseNode, visitor: AstVisitor<T>): T {
       return visitor.visitFieldAssignment(node as AST.FieldAssignmentNode);
     case 'CastValue':
       return visitor.visitCastValue(node as AST.CastValueNode);
+    case 'Spread':
+      return visitor.visitSpread(node as AST.SpreadNode);
 
     // Content
     case 'TextContent':

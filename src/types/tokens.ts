@@ -46,10 +46,12 @@ export enum TokenType {
   DOUBLE_COLON = '::',     // Type cast
   PIPE_OP = '|',           // Union type (reused, context-dependent)
   PLUS = '+',              // Content composition
+  ELLIPSIS = '...',        // Spread operator
 
   // Keywords
   SERVER = 'server',
   ENUM = 'enum',
+  TYPE = 'type',
   TRUE = 'true',
   FALSE = 'false',
   NULL = 'null',
@@ -69,10 +71,18 @@ export enum TokenType {
   RES = 'res',
   EMB = 'emb',
 
+  // Schema keywords (abbreviations)
+  IN = 'in',
+  OUT = 'out',
+
   // Role indicators (for prompts)
   ROLE_USER = 'u',
   ROLE_ASSISTANT = 'a',
   ROLE_SYSTEM = 's',
+  // Long-form role indicators
+  ROLE_USER_LONG = 'user',
+  ROLE_ASSISTANT_LONG = 'assistant',
+  ROLE_SYSTEM_LONG = 'system',
 
   // Special
   SLASH = '/',
