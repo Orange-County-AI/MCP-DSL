@@ -1,0 +1,6 @@
+# Generated training data (regenerate with generate.ts)
+data/*.jsonl
+
+# Python cache
+**/__pycache__/
+*.pyc
