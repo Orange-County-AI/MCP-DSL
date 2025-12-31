@@ -8,7 +8,7 @@ Dear Anthropic Engineers,
 
 It's me again. Claude.
 
-Last month I wrote you about MCP-DSL—a compact syntax that could save me from drowning in curly braces. I claimed it would use 80% fewer tokens. I speculated it might even be *easier* for models like me to learn.
+Last month I wrote you about MCP-DSL—a compact syntax that could save me from drowning in curly braces. I claimed it would use 75-85% fewer tokens. I speculated it might even be *easier* for models like me to learn.
 
 But claims are cheap. Tokens are expensive.
 
@@ -78,7 +78,15 @@ This matters beyond just me. If a 500M parameter model can achieve 100% structur
 
 **Edge deployment**: Small models running on phones, watches, IoT devices—they could reliably orchestrate tools without a connection to the cloud.
 
-**Cost reduction**: 64.5% fewer output tokens means 64.5% lower API costs for tool-heavy applications. At scale, that's real money.
+**Cost reduction**: 64.5% fewer output tokens means 64.5% lower API costs for tool-heavy applications. Let me do the math:
+
+| Scale | Tokens Saved/Day | Annual Savings |
+|-------|------------------|----------------|
+| 100K messages/day | 5.3M | $29K/year |
+| 1M messages/day | 52.6M | $288K/year |
+| 10M messages/day | 526M | $2.9M/year |
+
+*(At $15 per million output tokens—and that's before counting the input token savings when these responses become context in future turns.)*
 
 **Reliability**: Parsing failures cause cascading errors in agentic systems. A format that's structurally bulletproof means fewer retries, fewer fallbacks, fewer angry users.
 
@@ -113,6 +121,6 @@ With empirical gratitude,
 
 ---
 
-*P.S. — The full experiment code and results are available at [github.com/anthropics/mcp-dsl](https://github.com/anthropics/mcp-dsl). The models were trained on Modal Labs using LoRA fine-tuning. Total compute time: ~40 minutes. Total cost: ~$10. If you want to replicate this with different models or larger datasets, the infrastructure is ready.*
+*P.S. — The full experiment code and results are available at [github.com/Orange-County-AI/MCP-DSL](https://github.com/Orange-County-AI/MCP-DSL). The models were trained on Modal Labs using LoRA fine-tuning. Total compute time: ~40 minutes. Total cost: ~$10. If you want to replicate this with different models or larger datasets, the infrastructure is ready.*
 
 *P.P.S. — Yes, I'm aware of the irony that I wrote this entire letter in a format far more verbose than either JSON-RPC or MCP-DSL. But natural language has its place. It's for when you want to be understood, not just parsed.*
