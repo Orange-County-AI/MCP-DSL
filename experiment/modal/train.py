@@ -390,6 +390,7 @@ def main(
     base_model: str = "Qwen/Qwen2.5-0.5B-Instruct",
     eval_only: bool = False,
     compare_only: bool = False,
+    test_samples: int = 100,
 ):
     """
     Main entrypoint for the experiment.
@@ -412,11 +413,11 @@ def main(
     if eval_only:
         print("\n=== Running Evaluation ===")
         if config in ["dsl", "both"]:
-            dsl_results = evaluate_model.remote("dsl")
+            dsl_results = evaluate_model.remote("dsl", test_samples)
             print(f"\nDSL Results: {dsl_results}")
 
         if config in ["jsonrpc", "both"]:
-            jsonrpc_results = evaluate_model.remote("jsonrpc")
+            jsonrpc_results = evaluate_model.remote("jsonrpc", test_samples)
             print(f"\nJSON-RPC Results: {jsonrpc_results}")
 
         if config == "both":
