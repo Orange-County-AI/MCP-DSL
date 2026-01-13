@@ -1,8 +1,10 @@
 # MCP-DSL: A Token-Efficient Language for Model Context Protocol
 
-**75-85% token reduction. Same MCP power. Real cost savings.**
+**64.5% token reduction. 100% structural accuracy. Empirically validated.**
 
-MCP-DSL is a domain-specific language designed to replace verbose JSON-RPC in the Model Context Protocol, cutting token usage by up to 85% while maintaining full compatibility and expressiveness.
+MCP-DSL is a domain-specific language designed to replace verbose JSON-RPC in the Model Context Protocol, cutting token usage by 64.5% while maintaining full compatibility and expressiveness.
+
+> **Validated by experiment**: We fine-tuned two small LLMs on identical MCP tasks—one using JSON-RPC, one using MCP-DSL. The DSL model achieved 100% structural accuracy vs 53% for JSON-RPC, while using 64.5% fewer tokens. [See the full results →](./experiment/results/RESULTS.md)
 
 ## Quick Example
 
@@ -162,13 +164,15 @@ See [GRAMMAR.md](./GRAMMAR.md) for complete language specification.
 
 ### Token Efficiency
 
-For a system processing **1 million MCP messages per day**:
+*Based on empirical testing with fine-tuned models:*
 
-- **Tokens saved**: 341M tokens/day
-- **API cost savings** (at $3/M input tokens): **$1,023/day** = **$373,395/year**
-- **With output tokens** (at $15/M): Total savings **$1.2M+/year**
+| Scale | Tokens Saved/Day | Annual Savings (at $15/M output tokens) |
+|-------|------------------|----------------------------------------|
+| 100K messages/day | 5.3M | **$29K/year** |
+| 1M messages/day | 52.6M | **$288K/year** |
+| 10M messages/day | 526M | **$2.9M/year** |
 
-Even at moderate scale (100K messages/day), annual savings exceed **$120K**.
+Our experiment measured 52.6 tokens saved per message (81.5 → 28.9 average). At scale, these savings compound significantly—especially for agentic systems with multi-turn conversations.
 
 ### When to Use MCP-DSL
 
